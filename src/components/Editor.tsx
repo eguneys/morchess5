@@ -3,8 +3,13 @@ import { createStore } from "solid-js/store"
 
 type EditorMode = 'normal' | 'edit' | 'command' 
 
+type MotionCommand = 'none' | 'delete' | 'change' | 'yank'
+
 type EditorState = {
-    mode: EditorMode,
+    yanked_text: string
+    yanked_line: string
+    motion_cmd: MotionCommand
+    mode: EditorMode
     lines: string[]
     cursor_line: number
     cursor_char: number
@@ -34,11 +39,16 @@ type EditorActions = {
     normal_mode_set_cursor_append_end_of_line(): void
     normal_mode_join_lines(): void
     normal_mode_goto_beginning_of_line(): void
+    normal_mode_delete_delete_line(): void
+    normal_mode_yank_text(): void
 }
 
 export default function Editor(props: { text: string, on_save_text: (_: string) => void }) {
 
     const [state, set_state] = createStore<EditorState>({
+        yanked_text: '',
+        yanked_line: '',
+        motion_cmd: 'none',
         mode: 'normal',
         lines: props.text.split('\n'),
         cursor_line: 0,
@@ -216,6 +226,24 @@ export default function Editor(props: { text: string, on_save_text: (_: string) 
                 i++
             }
             set_state('cursor_char', i)
+        },
+        normal_mode_delete_delete_line() {
+
+            if (state.motion_cmd === 'none') {
+                set_state('motion_cmd', 'delete')
+            } else if (state.motion_cmd === 'delete') {
+                set_state('yanked_line', state.lines[state.cursor_line])
+                set_state('lines', _ => _.toSpliced(state.cursor_line, 1))
+                set_state('motion_cmd', 'none')
+            }
+        },
+        normal_mode_yank_text() {
+
+            if (state.yanked_line !== '') {
+                set_state('lines', _ => _.toSpliced(state.cursor_line + 1, 0, state.yanked_line))
+                set_state('cursor_line', state.cursor_line + 1)
+
+            }
         }
     }
 
@@ -325,6 +353,12 @@ function KeyBindings(state: EditorState, actions: EditorActions) {
                 break
             case 'x':
                 actions.normal_mode_delete_char()
+                break
+            case 'd':
+                actions.normal_mode_delete_delete_line()
+                break
+            case 'p':
+                actions.normal_mode_yank_text()
                 break
             case 'j': case 'J':
                 if (e.shiftKey) {
