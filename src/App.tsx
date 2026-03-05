@@ -2,12 +2,13 @@ import { createAsync } from "@solidjs/router"
 import { Chessboard } from "./components/Chessboard"
 import Editor from "./components/Editor"
 import { TauProvider, useTau } from "./state/prolog"
-import { createMemo } from "solid-js"
+import { createEffect, createMemo } from "solid-js"
 import { createStore } from "solid-js/store"
 import type { DrawShape } from "@lichess-org/chessground/draw"
 import type { Key } from "@lichess-org/chessground/types"
 import { SquareSet } from "../../hopefox/dist/src/distill/squareSet"
 import { square } from "hopefox"
+import { makePersisted } from "@solid-primitives/storage"
 
 function App() {
 
@@ -24,16 +25,20 @@ const Program_Header = `
 
 function Home() {
 
-  const [state, set_state] = createStore({
+  const [save_state, set_save_state] = makePersisted(createStore({
     program: ''
-  })
+  }), { name: 'morchess5.v1' })
 
   let [, { query } ] = useTau()
 
   const Full_program = createMemo(() => `
 ${Program_Header} 
-${state.program}
+${save_state.program}
 `)
+
+createEffect(() => {
+  console.log(save_state.program)
+})
 
   const squares = createAsync(() => query(Full_program(), 'square(X).'))
 
@@ -56,7 +61,7 @@ ${state.program}
   return (<>
     <div class='flex flex-row h-screen bg-slate-500'>
       <div class='flex-1 editor-wrap'>
-        <Editor on_save_text={(_) => set_state('program', _)}/>
+        <Editor text={save_state.program} on_save_text={(_) => set_save_state('program', _)}/>
       </div>
       <div class='flex-1 self-center board-wrap'>
         <Chessboard fen="" shapes={shapes()} />

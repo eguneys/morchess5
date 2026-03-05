@@ -29,16 +29,18 @@ type EditorActions = {
     normal_mode_motion_back_word(): void
     normal_mode_motion_forward_word(): void
     normal_mode_o_newline_set_in_edit_mode(): void
+    normal_mode_o_newline_above_set_in_edit_mode(): void
     normal_mode_set_cursor_append_char(): void
     normal_mode_set_cursor_append_end_of_line(): void
     normal_mode_join_lines(): void
+    normal_mode_goto_beginning_of_line(): void
 }
 
-export default function Editor(props: { on_save_text: (_: string) => void }) {
+export default function Editor(props: { text: string, on_save_text: (_: string) => void }) {
 
     const [state, set_state] = createStore<EditorState>({
         mode: 'normal',
-        lines: [''],
+        lines: props.text.split('\n'),
         cursor_line: 0,
         cursor_char: 0,
         input_command: ''
@@ -120,6 +122,13 @@ export default function Editor(props: { on_save_text: (_: string) => void }) {
                 set_state('cursor_char', 0)
             })
         }, 
+        normal_mode_o_newline_above_set_in_edit_mode() {
+            batch(() => {
+                set_state('lines', _ => state.lines.toSpliced(state.cursor_line, 0, ''))
+                set_state('cursor_line', state.cursor_line)
+                set_state('cursor_char', 0)
+            })
+        }, 
         normal_mode_change_end_of_line() {
             batch(() => {
                 let line_a = state.lines[state.cursor_line].slice(0, state.cursor_char)
@@ -197,6 +206,16 @@ export default function Editor(props: { on_save_text: (_: string) => void }) {
                 //set_state('cursor_line', state.cursor_line)
                 //set_state('cursor_char', 0)
             })
+        },
+        normal_mode_goto_beginning_of_line() {
+            let i = 0
+            while (i < state.lines[state.cursor_line].length) {
+                if (state.lines[state.cursor_line][i] !== ' ') {
+                    break
+                }
+                i++
+            }
+            set_state('cursor_char', i)
         }
     }
 
@@ -301,12 +320,17 @@ function KeyBindings(state: EditorState, actions: EditorActions) {
             case 'i':
                 actions.set_mode('edit')
                 break
+            case '_':
+                actions.normal_mode_goto_beginning_of_line()
+                break
             case 'x':
                 actions.normal_mode_delete_char()
                 break
             case 'j': case 'J':
                 if (e.shiftKey) {
                     actions.normal_mode_join_lines()
+                } else {
+                    actions.normal_mode_motion_down()
                 }
                 break
             case 'a': case 'A':
@@ -341,9 +365,13 @@ function KeyBindings(state: EditorState, actions: EditorActions) {
             case 'k':
                 actions.normal_mode_motion_up()
                 break
-            case 'o':
+            case 'o': case 'O': 
                 actions.set_mode('edit')
-                actions.normal_mode_o_newline_set_in_edit_mode()
+                if (e.shiftKey) {
+                    actions.normal_mode_o_newline_above_set_in_edit_mode()
+                } else {
+                    actions.normal_mode_o_newline_set_in_edit_mode()
+                }
                 break
             default: 
                 handled = false
