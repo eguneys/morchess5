@@ -2,13 +2,15 @@ import { createAsync } from "@solidjs/router"
 import { Chessboard } from "./components/Chessboard"
 import Editor from "./components/Editor"
 import { TauProvider, useTau } from "./state/prolog"
-import { createEffect, createMemo } from "solid-js"
+import { createMemo } from "solid-js"
 import { createStore } from "solid-js/store"
 import type { DrawShape } from "@lichess-org/chessground/draw"
 import type { Key } from "@lichess-org/chessground/types"
 import { SquareSet } from "../../hopefox/dist/src/distill/squareSet"
-import { square } from "hopefox"
+import { EMPTY_FEN, fen_pos, makeFen, makeSquare, parseSquare, square } from "hopefox"
 import { makePersisted } from "@solid-primitives/storage"
+import { LoadFen, Scripts } from "./prolog_scripts"
+import type { Piece } from "../../hopefox/dist/src/distill/types"
 
 function App() {
 
@@ -20,7 +22,18 @@ function App() {
 }
 
 const Program_Header = `
-  :- dynamic(square/1).
+% -- Header -- % 
+:- dynamic(green/1).
+:- dynamic(red/1).
+`
+const Program_Scripts = `
+% -- Scripts -- %
+${Scripts}
+`
+
+const Program_Load = `
+% -- Load -- %
+${LoadFen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")}
 `
 
 function Home() {
@@ -33,24 +46,68 @@ function Home() {
 
   const Full_program = createMemo(() => `
 ${Program_Header} 
+${Program_Scripts}
 ${save_state.program}
+${Program_Load}
 `)
 
-createEffect(() => {
-  console.log(save_state.program)
-})
+  const queries = createAsync(() => query(Full_program(), { 
+    QQ: 'load_fen.',
+    X_green: 'green(X).',
+    X_red: 'red(X).',
+    Z_pieces: 'piece_at(root, X, Y, Z).'
+  }))
 
-  const squares = createAsync(() => query(Full_program(), 'square(X).'))
+  const fen = createMemo(() => {
+    let qq = queries()
+
+    if (!qq) {
+      return EMPTY_FEN
+    }
+
+    let { pieces } = qq
+
+
+    let pos = fen_pos(EMPTY_FEN)
+
+    for (let p_str of pieces) {
+
+      let [square, role, color] = p_str.split(' ')
+
+      let piece: Piece = { color, role } as Piece
+      pos.board.set(parseSquare(square)!, piece)
+    }
+    
+    return makeFen(pos.toSetup())
+  })
 
   const shapes = createMemo(() => {
     let res: DrawShape[] = []
 
-    let ss = squares()
+    let qq = queries()
 
+    if (!qq) {
+      return []
+    }
+
+    let { green } = qq
+
+    let ss = green
     if (ss) {
       for (let s of ss) {
         if (is_key(s)) {
           res.push({ orig: s, brush: 'green'})
+        }
+      }
+    }
+
+    let { red } = qq
+    console.log(red)
+
+    if (red) {
+      for (let s of red) {
+        if (is_key(s)) {
+          res.push({ orig: s, brush: 'red'})
         }
       }
     }
@@ -64,7 +121,7 @@ createEffect(() => {
         <Editor text={save_state.program} on_save_text={(_) => set_save_state('program', _)}/>
       </div>
       <div class='flex-1 self-center board-wrap'>
-        <Chessboard fen="" shapes={shapes()} />
+        <Chessboard fen={fen()} shapes={shapes()} />
       </div>
     </div>
   </>)
