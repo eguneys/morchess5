@@ -1,0 +1,84 @@
+@import 'tailwindcss';
+
+
+.space-mono-regular {
+  font-family: "Space Mono", monospace;
+  font-weight: 400;
+  font-style: normal;
+}
+
+
+.inter-500 {
+  font-family: "Inter", sans-serif;
+  font-optical-sizing: auto;
+  font-weight: 500;
+  font-style: normal;
+}
+
+
+.tinos-regular {
+  font-family: "Tinos", serif;
+  font-weight: 400;
+  font-style: normal;
+}
+
+.tinos-bold {
+  font-family: "Tinos", serif;
+  font-weight: 700;
+  font-style: normal;
+}
+
+.tinos-regular-italic {
+  font-family: "Tinos", serif;
+  font-weight: 400;
+  font-style: italic;
+}
+
+.tinos-bold-italic {
+  font-family: "Tinos", serif;
+  font-weight: 700;
+  font-style: italic;
+}
+
+
+/*
+Source - https://stackoverflow.com/a/16344389
+Posted by Mr. Alien, modified by community. See post 'Timeline' for change history
+Retrieved 2026-01-12, License - CC BY-SA 4.0
+*/
+
+.animate-blink {
+  animation: blinker .9s linear infinite;
+}
+
+@keyframes blinker {
+  20% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+  }
+}
+
+::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+::-webkit-scrollbar-track {
+  border-radius: 100vh;
+  background: #f7f4ed;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #e0cbcb;
+  border-radius: 100vh;
+  border: 3px solid #f6f7ed;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #c0a0b9;
+}
