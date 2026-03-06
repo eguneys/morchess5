@@ -32,6 +32,7 @@ type EditorActions = {
     normal_mode_motion_up(): void
     normal_mode_motion_down(): void
     normal_mode_motion_back_word(): void
+    normal_mode_motion_back_word_whitespace(): void
     normal_mode_motion_forward_word(): void
     normal_mode_o_newline_set_in_edit_mode(): void
     normal_mode_o_newline_above_set_in_edit_mode(): void
@@ -193,7 +194,18 @@ export default function Editor(props: { text: string, on_save_text: (_: string) 
             let line = state.lines[state.cursor_line]
             let i = state.cursor_char
             while (i > 0) {
-                if (line[--i] === ' ') {
+                if (!/[a-zA-Z0-9]/.test(line[--i])) {
+                    break
+                }
+            }
+            set_state('cursor_char', i)
+        },
+        normal_mode_motion_back_word_whitespace() {
+
+            let line = state.lines[state.cursor_line]
+            let i = state.cursor_char
+            while (i > 0) {
+                if (/\s/.test(line[--i])) {
                     break
                 }
             }
@@ -397,8 +409,12 @@ function KeyBindings(state: EditorState, actions: EditorActions) {
             case 'w':
                 actions.normal_mode_motion_forward_word()
                 break
-            case 'b':
-                actions.normal_mode_motion_back_word()
+            case 'b': case 'B':
+                if (e.shiftKey) {
+                    actions.normal_mode_motion_back_word_whitespace()
+                } else {
+                    actions.normal_mode_motion_back_word()
+                }
                 break
             case 'h':
                 actions.normal_mode_motion_left()

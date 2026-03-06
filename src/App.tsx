@@ -245,10 +245,10 @@ ${Program_Load}
   const on_keydown = (e: KeyboardEvent) => {
     switch (e.key) {
       case 'ArrowRight':
-        go_next()
+        //go_next()
         break
       case 'ArrowLeft':
-        go_prev()
+        //go_prev()
         break
       case 'ArrowDown':
         next_puzzle()
