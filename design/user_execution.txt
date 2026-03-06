@@ -1,0 +1,44 @@
+:- use_module(library(sandbox)).
+
+safe_query(Goal) :-
+    sandbox:safe_goal(Goal),
+    call(Goal).
+
+safe_query(user_land_entry:green(X)).
+
+run_with_limit(Goal, Result) :-
+    catch(
+        call_with_time_limit(2, Goal),
+        time_limit_exceeded,
+        Result = timeout
+    ).
+
+% run_with_limit(user_land_entry:green(X), R).
+
+
+set_prolog_flag(stack_limit, 512_000_000).
+
+% call_with_depth_limit(Goal, 1000, Result).
+
+
+
+
+
+
+load_user_code(Code) :-
+    clear_user_module,
+    setup_call_cleanup(
+        open_string(Code, Stream),
+        load_files(user_land_entry,
+            [ stream(Stream),
+              module(user_land_entry)
+            ]),
+        close(Stream)
+    ).
+
+
+clear_user_module :-
+    forall(
+        current_predicate(user_land_entry:Name/Arity),
+        abolish(user_land_entry:Name/Arity)
+    ).

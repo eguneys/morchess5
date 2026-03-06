@@ -92,7 +92,7 @@ function Home() {
     if (state.selected_puzzle === undefined) {
       return
     }
-    one(state.selected_puzzle.id, Full_program(), Queries, state.selected_puzzle.i_cursor)
+    //one(state.selected_puzzle.id, Full_program(), Queries, state.selected_puzzle.i_cursor)
   }
 
   let [, { query } ] = useTau()
@@ -111,8 +111,11 @@ ${Program_Load}
     X_red: 'red(X).',
   }
 
-  const queries = createAsync(() => query(Full_program(), { QQ: `load_fen('${state.selected_puzzle?.fen??EMPTY_FEN}').`, ...Queries}))
-
+  const queries = createAsync(() => query(Full_program(), 
+  { 
+    //QQ: `load_fen('${state.selected_puzzle?.fen??EMPTY_FEN}').`, 
+    ...Queries
+  }))
 
   const history = createMemo(() => {
     let qq = queries()

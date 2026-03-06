@@ -125,7 +125,6 @@ export async function _prolog_query(program: string, query: Record<string, strin
 
         return res2
     } catch (e) {
-
         console.error(e)
         return undefined
     }

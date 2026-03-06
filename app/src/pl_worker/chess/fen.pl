@@ -1,13 +1,11 @@
-:- use_module(library(js)).
+:- module(fen, [
+    load_fen/1,
+    show_board/1,
+    parse_uci/2
+]).
 
-parse_int(Int, X) :- apply(parseInt, [Int], X).
-is_integer(Int) :- apply(parseInt, [Int], X), integer(X).
-int_to_atom(Int, Atom) :- number_chars(Int, [Atom]).
-
-split_string(FEN, Delimeter, _, Ls) :-
-  apply(FEN, split, [Delimeter], Ls).
-
-string_chars(FEN, Ls) :- split_string(FEN, '', _, Ls).
+:- use_module(node_id).
+:- use_module(piece_at).
 
 starting_position("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1").
 
@@ -16,7 +14,7 @@ starting_position("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1").
 load_fen(FEN) :-
   reset_worlds,
   split_string(FEN, " ", "", [Board, Turn, Castle, Ep | _]),
-  load_board(Board).
+  load_board(Board),
   load_turn(Turn),
   load_castling(Castle),
   load_ep(Ep).
@@ -26,23 +24,21 @@ load_board(BoardStr) :-
   load_ranks(Ranks, 8).
 
 load_ranks([], _).
-load_ranks([RStr|Rs], Rank) :-
-  string_chars(RStr, R),
+load_ranks([R|Rs], Rank) :-
   load_rank(R, Rank, a),
   Rank1 is Rank - 1,
   load_ranks(Rs, Rank1).
 
 load_rank([], _, _).
-load_rank([C|Cs], Rank, File) :-
-  ( is_integer(C) ->
-       parse_int(C, N),
+load_rank(Str, Rank, File) :-
+  string_chars(Str, [C|Cs]),
+  ( char_type(C, digit)
+    -> atom_number(C, N),
        file_advance(File, N, File1),
        load_rank(Cs, Rank, File1)
-    ;
-       piece_char(C, Piece, Color),
-       int_to_atom(Rank, RankAtom),
-       square(File, RankAtom, Sq),
-       assertz(base_piece_at(root, Sq, Piece, Color)),
+    ;  piece_char(C, Piece, Color),
+       square(File, Rank, Sq),
+       assert(base_piece_at(root, Sq, Piece, Color)),
        file_advance(File, 1, File1),
        load_rank(Cs, Rank, File1)
     ).
@@ -71,13 +67,11 @@ file_advance(File, N, File2) :-
 square(File, Rank, Sq) :-
   atom_concat(File, Rank, Sq).
 
-
-
 load_turn("w") :-
-  assertz(base_side_to_move(root, white)).
+  assert(base_side_to_move(root, white)).
 
 load_turn("b") :-
-  assertz(base_side_to_move(root, black)).
+  assert(base_side_to_move(root, black)).
 
 
 load_castling("-") :- !.
@@ -85,18 +79,19 @@ load_castling(Str) :-
   string_chars(Str, Cs),
   forall(member(C, Cs), load_castle_char(C)).
 
-load_castle_char('K') :- assertz(base_castle_right(rootk, white, king_side)).
-load_castle_char('Q') :- assertz(base_castle_right(rootk, white, queen_side)).
-load_castle_char('k') :- assertz(base_castle_right(rootk, black, king_side)).
-load_castle_char('q') :- assertz(base_castle_right(rootk, black, queen_side)).
+load_castle_char('K') :- assert(base_castle_right(rootk, white, king_side)).
+load_castle_char('Q') :- assert(base_castle_right(rootk, white, queen_side)).
+load_castle_char('k') :- assert(base_castle_right(rootk, black, king_side)).
+load_castle_char('q') :- assert(base_castle_right(rootk, black, queen_side)).
 
 load_ep('-') :- !.
   load_ep(Sq) :-
   atom_string(A, Sq),
-  assertz(base_ep_square(root, A)).
+  assert(base_ep_square(root, A)).
+
 
 file(a).  file(b).  file(c).  file(d).  file(e).  file(f).  file(g).  file(h).
-rank('8').  rank('7').  rank('6').  rank('5').  rank('4').  rank('3').  rank('2').  rank('1').
+rank(8).  rank(7).  rank(6).  rank(5).  rank(4).  rank(3).  rank(2).  rank(1).
 
 piece_symbol(pawn,white,'P').
 piece_symbol(knight,white,'N').
