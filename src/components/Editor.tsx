@@ -1,3 +1,4 @@
+import { makePersisted } from "@solid-primitives/storage"
 import { batch, createMemo, For, onCleanup, onMount, Show } from "solid-js"
 import { createStore } from "solid-js/store"
 
@@ -43,6 +44,7 @@ type EditorActions = {
     normal_mode_delete_delete_line(): void
     normal_mode_yank_text(): void
     normal_mode_change_change_line(): void
+    normal_mode_insert_wall_of_text(res: string): void
 }
 
 export default function Editor(props: { text: string, on_save_text: (_: string) => void }) {
@@ -58,12 +60,28 @@ export default function Editor(props: { text: string, on_save_text: (_: string) 
         input_command: ''
     })
 
+    const [persisted_state, set_persisted_state] = makePersisted(createStore({
+        text: ''
+    }), { name: 'morchess5.editor.v1'})
+
+    const save_program = () => {
+        set_persisted_state('text', state.lines.join('\n'))
+    }
+    const load_program = () => {
+        set_state('lines', persisted_state.text.split('\n'))
+    }
+
+    onMount(() => {
+        load_program()
+    })
+
     const Full_Text = createMemo(() => state.lines.join('\n'))
 
     const execute_command = (command: string) => {
         if (command === 'w') {
             props.on_save_text(Full_Text())
             set_state('input_command', '')
+            save_program()
         }
     }
 
@@ -268,6 +286,25 @@ export default function Editor(props: { text: string, on_save_text: (_: string) 
                 set_state('cursor_line', state.cursor_line + 1)
 
             }
+        },
+        normal_mode_insert_wall_of_text(text: string) {
+            let lines = text.split('\n')
+            batch(() => {
+
+                let content = state.lines[state.cursor_line]
+                let new_content = content.slice(0, state.cursor_char) + lines[0] + content.slice(state.cursor_char)
+
+
+                set_state('lines', state.cursor_line, new_content)
+                set_state('cursor_char', state.cursor_char + lines[0].length)
+
+                for (let l of lines.slice(1)) {
+                    set_state('lines', lines => lines.toSpliced(state.cursor_line + 1, 0, l))
+                    set_state('cursor_char', l.length)
+                    set_state('cursor_line', state.cursor_line + 1)
+                }
+            })
+
         }
     }
 
@@ -284,7 +321,7 @@ export default function Editor(props: { text: string, on_save_text: (_: string) 
     })
 
     return (<>
-    <div class='editor h-full w-full flex flex-col space-mono-regular text-xl font-bold bg-zinc-700 text-amber-50'>
+    <div class='editor h-full w-full flex flex-col space-mono-regular text-sm font-bold bg-zinc-700 text-amber-50'>
         <div class='area whitespace-pre flex-1'>
             <For each={state.lines}>{ (line , index) => 
             <Show when={index() === state.cursor_line} fallback={
@@ -363,6 +400,14 @@ function KeyBindings(state: EditorState, actions: EditorActions) {
 
         let handled = true
         switch (e.key) {
+            case 'v': 
+                if (e.ctrlKey) {
+                    navigator.clipboard.readText().then(_ => {
+                        let res = _.split('\r\n').join('\n')
+                        actions.normal_mode_insert_wall_of_text(res)
+                    })
+                }
+                break
             case 'Escape':
                 actions.set_mode('normal')
                 break
