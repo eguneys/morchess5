@@ -1,48 +1,62 @@
 import { createContext, useContext, type JSX } from 'solid-js'
 import { createStore } from 'solid-js/store'
-import { create_agent, type ApiQueries } from './api_agent'
+import { create_agent, type ApiQueries, type Pagination } from './api_agent'
 import { createAsync } from '@solidjs/router'
-import type { Puzzle } from '../worker/fixture'
+import { convert_api_puzzle, type ApiPuzzle, type Puzzle } from './puzzle_fixture'
+import type { PuzzleId } from '../components/PuzzleList'
 
 export const useApi = () => useContext(ApiContext)!
 
 const ApiContext = createContext<ApiStore>()
 
 type ApiState = {
-    program: string
     queries?: ApiQueries
     list?: Puzzle[]
 }
 
 type ApiActions = {
     set_program(program: string): Promise<void>
+    set_selected_puzzle_id(puzzle_id: PuzzleId): Promise<void>
+}
+
+type ApiStoreState = {
+    program: string
+    selected_puzzle_id: string
 }
 
 type ApiStore = [ApiState, ApiActions]
+
+
 
 export const ApiProvider = (props: { children: JSX.Element }) => {
 
     let $api_agent = create_agent()
 
-    const [state, set_state] = createStore<ApiState>({
+    const [state, set_state] = createStore<ApiStoreState>({
         program: '',
-        
+        selected_puzzle_id: ''
     })
 
     
-    const get_PuzzleList = createAsync<Puzzle[]>(async () => {
+    const get_PuzzleList = createAsync<Pagination<ApiPuzzle>>(async () => {
         return $api_agent.puzzle_list()
-    }, { initialValue: [] })
+    })
 
 
 
     const get_Queries = createAsync<ApiQueries>(async () => {
-        return $api_agent.prolog_code(state.program)
+        if (state.program === '' || state.selected_puzzle_id === '') {
+            return { error: 'not initialized' }
+        }
+        return $api_agent.prolog_code(state.program, state.selected_puzzle_id)
     })
 
     const actions = {
         async set_program(program: string) {
             set_state('program', program)
+        },
+        async set_selected_puzzle_id(puzzle_id: string) {
+            set_state('selected_puzzle_id', puzzle_id)
         }
     }
 
@@ -54,7 +68,7 @@ export const ApiProvider = (props: { children: JSX.Element }) => {
             return get_Queries()
         },
         get list(): Puzzle[] | undefined {
-            return get_PuzzleList.latest
+            return get_PuzzleList()?.items.map(convert_api_puzzle)
         }
 
     }

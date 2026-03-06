@@ -1,14 +1,57 @@
-import { createEffect, For } from "solid-js"
+import { createEffect, For, onCleanup } from "solid-js"
 import type { Puzzle } from "../worker/fixture"
 
 export type PuzzleId = string
 
-export function PuzzleList(props: { list?: Puzzle[], selected?: PuzzleId, on_select_puzzle: (p: Puzzle) => void }) {
-  console.log(props.list, props.selected)
+export function PuzzleList(props: { list?: Puzzle[], selected?: PuzzleId, on_puzzle_selected: (p: Puzzle) => void }) {
+
+  const on_keydown = (e: KeyboardEvent) => {
+    switch (e.key) {
+      case 'ArrowDown':
+        next_puzzle()
+        break
+      case 'ArrowUp':
+        prev_puzzle()
+        break
+      default:
+        return
+    }
+    e.preventDefault()
+  }
+
+  document.addEventListener('keydown', on_keydown)
+  onCleanup(() => {
+    document.removeEventListener('keydown', on_keydown)
+  })
+
+  const next_puzzle = () => {
+    if (props.list === undefined) {
+      return
+    }
+    let i = props.list.findIndex(_ => _.id === props.selected)
+    if (i > -1) {
+      props.on_puzzle_selected(props.list[(i + 1 + props.list.length) % props.list.length])
+    }
+  }
+
+  const prev_puzzle = () => {
+    if (props.list === undefined) {
+      return
+    }
+    let i = props.list.findIndex(_ => _.id === props.selected)
+    if (i > -1) {
+      props.on_puzzle_selected(props.list[(i - 1 + props.list.length) % props.list.length])
+    }
+  }
+
+
+
+
+
   return (<>
   <div class='flex flex-col overflow-y-scroll max-h-50'>
           <For each={props.list}>{(p, i) =>
-              <PuzzleItem n={i() + 1} selected={props.selected === p.id} puzzle={p} on_click={() => props.on_select_puzzle(p)} />
+              <PuzzleItem n={i() + 1} selected={props.selected === p.id} puzzle={p} on_click={() => props.on_puzzle_selected(p)} />
           }</For>
       </div>
   </>)

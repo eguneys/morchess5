@@ -1,16 +1,16 @@
 import { Chessboard } from "./components/Chessboard"
 import Editor from "./components/Editor"
-import { createMemo, ErrorBoundary, For, onCleanup, Show, Suspense } from "solid-js"
+import { createMemo, ErrorBoundary, For, Show, Suspense } from "solid-js"
 import { createStore } from "solid-js/store"
 import type { DrawShape } from "@lichess-org/chessground/draw"
 import type { Key } from "@lichess-org/chessground/types"
 import { EMPTY_FEN, fen_pos, makeFen, makeSan, parseSquare, parseUci, square } from "hopefox"
 import { makePersisted } from "@solid-primitives/storage"
 import { ApiProvider, useApi } from "./state/api"
-import type { Puzzle } from "./worker/fixture"
 import { type Piece, SquareSet } from "hopefox"
 import { PuzzleList, type PuzzleId } from "./components/PuzzleList"
 import { is_api_error, type ApiError, type ApiSuccess } from "./state/api_agent"
+import type { Puzzle } from "./state/puzzle_fixture"
 
 function App() {
   return <>
@@ -43,6 +43,7 @@ type PersistedState = {
 
 function Home() {
 
+  let [api, { set_program, set_selected_puzzle_id }] = useApi()
 
   const [state, set_state] = createStore<State>({
     program: '',
@@ -64,10 +65,9 @@ function Home() {
     if (state.selected_puzzle === undefined) {
       return
     }
-    //one(state.selected_puzzle.id, Full_program(), Queries, state.selected_puzzle.i_cursor)
+    set_selected_puzzle_id(state.selected_puzzle.id)
   }
 
-  let [api, { set_program }] = useApi()
 
   const api_Queries = createMemo<ApiSuccess | undefined>(() => {
     let res = api.queries
@@ -103,12 +103,7 @@ function Home() {
     let pos = fen_pos(fen())
 
     for (let move of moves) {
-      let m = move.match(/move\(([a-h][1-8]),([a-h][1-8])\)/)
-      if (!m) {
-
-        return []
-      }
-      let uci = `${m[1]}${m[2]}`
+      let uci = move.join('')
 
       let san = makeSan(pos, parseUci(uci)!)
       res.push(san)
@@ -132,7 +127,7 @@ function Home() {
 
     for (let p_str of pieces) {
 
-      let [square, role, color] = p_str.split(' ')
+      let [square, role, color] = p_str
 
       let piece: Piece = { color, role } as Piece
       pos.board.set(parseSquare(square)!, piece)
@@ -218,55 +213,6 @@ function Home() {
     run_on_one_puzzle()
   }
 
-
-
-  const on_keydown = (e: KeyboardEvent) => {
-    switch (e.key) {
-      case 'ArrowRight':
-        //go_next()
-        break
-      case 'ArrowLeft':
-        //go_prev()
-        break
-      case 'ArrowDown':
-        next_puzzle()
-        break
-      case 'ArrowUp':
-        prev_puzzle()
-        break
-      default:
-        return
-    }
-    e.preventDefault()
-  }
-
-  document.addEventListener('keydown', on_keydown)
-  onCleanup(() => {
-    document.removeEventListener('keydown', on_keydown)
-  })
-
-  const next_puzzle = () => {
-    if (api.list === undefined) {
-      return
-    }
-    let i = api.list.findIndex(_ => _.id === selected_puzzle()?.id)
-    if (i > -1) {
-      on_puzzle_selected(api.list[(i + 1 + api.list.length) % api.list.length])
-    }
-  }
-
-  const prev_puzzle = () => {
-    if (api.list === undefined) {
-      return
-    }
-    let i = api.list.findIndex(_ => _.id === selected_puzzle()?.id)
-    if (i > -1) {
-      on_puzzle_selected(api.list[(i - 1 + api.list.length) % api.list.length])
-    }
-  }
-
-
-
   return (<>
     <div class='flex flex-row h-screen bg-slate-500'>
       <div class='relative flex-2 editor-wrap overflow-hidden'>
@@ -283,7 +229,7 @@ function Home() {
           <Suspense fallback={<>
             <div class='py-5 text-center text-lime-500'>Loading Puzzle list...</div>
           </>}>
-            <PuzzleList list={api.list} selected={selected_puzzle()?.id} on_select_puzzle={on_puzzle_selected} />
+            <PuzzleList list={api.list} selected={selected_puzzle()?.id} on_puzzle_selected={on_puzzle_selected} />
           </Suspense>
         </ErrorBoundary>
       </div>

@@ -10,6 +10,7 @@ import { getDefaultHighWaterMark } from "stream";
 import { DEV } from "./config.js";
 import { inc, metrics } from "./metrics.js";
 import { run } from "./pl_worker/pl_worker.js";
+import { paginate, puzzleFixture, transformList } from "./puzzles_fixture.js";
 
 
 export const gen_id8 = () => Math.random().toString(16).slice(2, 10)
@@ -33,8 +34,10 @@ router.use(async (req, res, next) => {
 
   let ip = req.ip
   if (ip) {
+    if (!DEV) {
       await rateLimit(ip, 'ip_fast', 15, 5)
       await rateLimit(ip, 'ip_hour', 100, 3600)
+    }
   }
 
   let sessionId = req.cookies.morchess_session
@@ -90,25 +93,48 @@ router.use(async (req, res, next) => {
 })
 
 
-router.post('/score', async (req, res) => {
-    await rateLimit(req.user_id!, 'score_fast', 5, 15)
-    await rateLimit(req.user_id!, 'score_hour', 10, 3600)
+router.get('/puzzle_list', async (req, res) => {
+  if (!DEV) {
+    await rateLimit(req.user_id!, 'puzzle_list_fast', 5, 15)
+    await rateLimit(req.user_id!, 'puzzle_list_hour', 10, 3600)
+  }
+
+    const page = Number(req.query.page ?? 1)
+    const pageSize = Math.min(100, Number(req.query.pageSize ?? 10))
+
+    const pageData = paginate(puzzleFixture, page, pageSize)
+
+    const transformed = pageData.items
+
+    res.json({
+      ...pageData,
+      items: transformed
+    })
 })
 
 
 router.post('/prolog_code', async (req, res) => {
-    await rateLimit(req.user_id!, 'handle_fast', 8, 10)
-    await rateLimit(req.user_id!, 'handle_hour', 60, 3600)
+
+  if (!DEV) {
+    await rateLimit(req.user_id!, 'prolog_fast', 8, 10)
+    await rateLimit(req.user_id!, 'prolog_hour', 60, 3600)
+  }
 
 
-    const { code } = req.body
+    const { code, puzzle_id } = req.body
 
     if (code.length > 5000) {
         return res.status(400).json({ error: 'Code too long' })
     }
 
+    let fen = puzzleFixture.find(_ => _.id === puzzle_id)?.fen
+
+    if (!fen) {
+      return res.status(400).json({ error: "Puzzle not found." })
+    }
+
     try {
-      let result = await run(code)
+      let result = await run(code, fen)
       res.json(result)
     } catch (e) {
       res.json({ error: e })

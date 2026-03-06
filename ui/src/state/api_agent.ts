@@ -1,5 +1,13 @@
-import type { Puzzle } from "../worker/fixture"
+import type { PuzzleId } from "../components/PuzzleList"
+import type { ApiPuzzle } from "./puzzle_fixture"
 
+export type Pagination<T> = {
+    page: number,
+    pageSize: number,
+    total: number
+    pages: number
+    items: T[]
+}
 export const API_ENDPOINT = import.meta.env.DEV ? 'http://localhost:3300' : `https://api5.morchess.com`
 const $ = async (path: string, opts?: RequestInit) => {
 
@@ -33,8 +41,8 @@ async function $post(path: string, body: any = {}) {
 
 export function create_agent(): Agent {
     return {
-        async prolog_code(code: string) {
-            return $post('/prolog_code', { code })
+        async prolog_code(code: string, puzzle_id: PuzzleId) {
+            return $post('/prolog_code', { code, puzzle_id })
         },
         async puzzle_list() {
             return $('/puzzle_list')
@@ -44,8 +52,8 @@ export function create_agent(): Agent {
 
 
 export type Agent = {
-    puzzle_list(): Promise<Puzzle[]>
-    prolog_code: (code: string) => Promise<ApiQueries>
+    puzzle_list(): Promise<Pagination<ApiPuzzle>>
+    prolog_code: (code: string, puzzle_id: PuzzleId) => Promise<ApiQueries>
 }
 
 export type ApiQueries = ApiSuccess | ApiError
@@ -54,8 +62,8 @@ export type ApiQueries = ApiSuccess | ApiError
 export type ApiSuccess = {
     red: string[]
     green: string[]
-    pieces: string[]
-    moves: string[]
+    pieces: string[][]
+    moves: string[][]
 }
 
 export type ApiError = {

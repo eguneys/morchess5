@@ -44,7 +44,7 @@ function parse_puzzles(str: string): Puzzle[] {
     })
 }
 
-export type Puzzle = {
+type Puzzle = {
     id: string,
     link: string,
     fen: string,

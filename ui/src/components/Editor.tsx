@@ -69,6 +69,7 @@ export default function Editor(props: { text: string, on_save_text: (_: string) 
     }
     const load_program = () => {
         set_state('lines', persisted_state.text.split('\n'))
+        props.on_save_text(Full_Text())
     }
 
     onMount(() => {

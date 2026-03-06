@@ -79,8 +79,10 @@ load_user_code(Code) :-
 
 run_query(Dict, Result) :-
     Code = Dict.get(code),
+    Fen = Dict.get(fen),
 
     load_user_code(Code),
+    user_land_entry:load_fen(Fen),
     safe_run(Result).
 
 
@@ -95,4 +97,9 @@ safe_run(Result) :-
 run_analysis(Result) :-
     findall(X, user_land_entry:green(X), Greens),
     findall(X, user_land_entry:red(X), Reds),
-    Result = json{ green: Greens, red: Reds, pieces: [], moves: [] }.
+    findall([X, Y, Z], user_land_entry:piece_at(root, X, Y, Z), Pieces),
+    user_land_entry:history(XMoves),
+    maplist(move_to_pair, XMoves, Moves),
+    Result = json{ green: Greens, red: Reds, pieces: Pieces, moves: Moves }.
+
+move_to_pair(move(A,B), [A,B]).
