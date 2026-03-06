@@ -1,52 +1,29 @@
-import { createAsync } from "@solidjs/router"
 import { Chessboard } from "./components/Chessboard"
 import Editor from "./components/Editor"
-import { TauProvider, useTau } from "./state/prolog"
-import { createEffect, createMemo, For, onCleanup, Show } from "solid-js"
+import { createMemo, ErrorBoundary, For, onCleanup, Show, Suspense } from "solid-js"
 import { createStore } from "solid-js/store"
 import type { DrawShape } from "@lichess-org/chessground/draw"
 import type { Key } from "@lichess-org/chessground/types"
-import { SquareSet } from "../../hopefox/dist/src/distill/squareSet"
 import { EMPTY_FEN, fen_pos, makeFen, makeSan, parseSquare, parseUci, square } from "hopefox"
 import { makePersisted } from "@solid-primitives/storage"
-import type { Piece } from "../../hopefox/dist/src/distill/types"
-import { Scripts } from "./worker/prolog_scripts"
-import { useWorker, WorkerProvider } from "./worker/Worker2"
+import { ApiProvider, useApi } from "./state/api"
 import type { Puzzle } from "./worker/fixture"
-import type { PuzzleResult } from "./worker/worker_job"
+import { type Piece, SquareSet } from "hopefox"
+import { PuzzleList, type PuzzleId } from "./components/PuzzleList"
+import { is_api_error, type ApiError, type ApiSuccess } from "./state/api_agent"
 
 function App() {
-
   return <>
-    <WorkerProvider>
-      <TauProvider>
+      <ApiProvider>
         <Home />
-      </TauProvider>
-    </WorkerProvider>
+      </ApiProvider>
   </>
 }
 
-const Program_Header = `
-% -- Header -- % 
-:- dynamic(green/1).
-:- dynamic(red/1).
-:- dynamic(history/1).
-`
-const Program_Scripts = `
-% -- Scripts -- %
-${Scripts}
-`
-
-const Program_Load = `
-% -- Load -- %
-`
-
-type PuzzleId = string
 
 type State = {
   program: string
   selected_puzzle: SelectedPuzzleInfo | undefined
-  run_on_one: PuzzleResult | undefined
 }
 
 type FEN = string
@@ -66,15 +43,10 @@ type PersistedState = {
 
 function Home() {
 
-  const [worker, { one }] = useWorker()
-
 
   const [state, set_state] = createStore<State>({
     program: '',
     selected_puzzle: undefined,
-    get run_on_one() {
-      return worker.run_on_one
-    }
   })
 
   const [persisted_state, set_persisted_state] = makePersisted(createStore<PersistedState>({
@@ -95,30 +67,30 @@ function Home() {
     //one(state.selected_puzzle.id, Full_program(), Queries, state.selected_puzzle.i_cursor)
   }
 
-  let [, { query } ] = useTau()
+  let [api, { set_program }] = useApi()
 
-  const Full_program = createMemo(() => `
-${Program_Header} 
-${Program_Scripts}
-${state.program}
-${Program_Load}
-`)
+  const api_Queries = createMemo<ApiSuccess | undefined>(() => {
+    let res = api.queries
 
-  const Queries = {
-    Z_pieces: 'piece_at(root, X, Y, Z).',
-    Ls_moves: 'history(Ls).',
-    X_green: 'green(X).',
-    X_red: 'red(X).',
-  }
+    if (res !== undefined && is_api_error(res)) {
+      return undefined
+    }
+    return res
+  })
 
-  const queries = createAsync(() => query(Full_program(), 
-  { 
-    //QQ: `load_fen('${state.selected_puzzle?.fen??EMPTY_FEN}').`, 
-    ...Queries
-  }))
+  const api_Error = createMemo<ApiError | undefined>(() => {
+    let res = api.queries
+
+    console.log(api.queries)
+    if (res !== undefined && is_api_error(res)) {
+      return res
+    }
+  })
+
+
 
   const history = createMemo(() => {
-    let qq = queries()
+    let qq = api_Queries()
 
     if (!qq) {
       return []
@@ -147,7 +119,7 @@ ${Program_Load}
 
 
   const fen = createMemo(() => {
-    let qq = queries()
+    let qq = api_Queries()
 
     if (!qq) {
       return EMPTY_FEN
@@ -172,7 +144,7 @@ ${Program_Load}
   const shapes = createMemo(() => {
     let res: DrawShape[] = []
 
-    let qq = queries()
+    let qq = api_Queries()
 
     if (!qq) {
       return []
@@ -204,10 +176,13 @@ ${Program_Load}
 
 
   const selected_puzzle = createMemo(() => {
-    if (worker.list !== undefined) {
+    if (api.list !== undefined) {
       load_state()
-      if (state.selected_puzzle === undefined || !worker.list.find(_ => _.id === state.selected_puzzle!.id)) {
-        let puzzle = worker.list[0]
+      if (state.selected_puzzle === undefined || !api.list.find(_ => _.id === state.selected_puzzle!.id)) {
+        if (api.list.length === 0) {
+          return undefined
+        }
+        let puzzle = api.list[0]
         set_state('selected_puzzle', {
           id: puzzle.id,
           puzzle: puzzle,
@@ -220,7 +195,7 @@ ${Program_Load}
       }
       run_on_one_puzzle()
     }
-    return worker.list?.find(_ => _.id === state.selected_puzzle?.id)
+    return api.list?.find(_ => _.id === state.selected_puzzle?.id)
   })
 
 
@@ -239,7 +214,7 @@ ${Program_Load}
 
 
   const on_program_changed = (text: string) => {
-    set_state('program', text)
+    set_program(text)
     run_on_one_puzzle()
   }
 
@@ -271,22 +246,22 @@ ${Program_Load}
   })
 
   const next_puzzle = () => {
-    if (worker.list === undefined) {
+    if (api.list === undefined) {
       return
     }
-    let i = worker.list.findIndex(_ => _.id === selected_puzzle()?.id)
+    let i = api.list.findIndex(_ => _.id === selected_puzzle()?.id)
     if (i > -1) {
-      on_puzzle_selected(worker.list[(i + 1 + worker.list.length) % worker.list.length])
+      on_puzzle_selected(api.list[(i + 1 + api.list.length) % api.list.length])
     }
   }
 
   const prev_puzzle = () => {
-    if (worker.list === undefined) {
+    if (api.list === undefined) {
       return
     }
-    let i = worker.list.findIndex(_ => _.id === selected_puzzle()?.id)
+    let i = api.list.findIndex(_ => _.id === selected_puzzle()?.id)
     if (i > -1) {
-      on_puzzle_selected(worker.list[(i - 1 + worker.list.length) % worker.list.length])
+      on_puzzle_selected(api.list[(i - 1 + api.list.length) % api.list.length])
     }
   }
 
@@ -294,13 +269,23 @@ ${Program_Load}
 
   return (<>
     <div class='flex flex-row h-screen bg-slate-500'>
-      <div class='flex-2 editor-wrap overflow-hidden'>
+      <div class='relative flex-2 editor-wrap overflow-hidden'>
         <Editor text={state.program} on_save_text={on_program_changed}/>
+        <Show when={api_Error()}>{error => 
+          <div class='fade-in absolute rounded-sm p-2 bottom-0 right-0 text-amber-50 bg-red-500'>{error().error}</div>
+          }</Show>
       </div>
       <div class='flex-1 moves-wrap'>
-        <Show when={selected_puzzle()?.id}>{id =>
-          <PuzzleList selected={id()} on_select_puzzle={on_puzzle_selected} />
-        }</Show>
+
+        <ErrorBoundary fallback={(error) => <>
+          {error.message}
+        </>}>
+          <Suspense fallback={<>
+            <div class='py-5 text-center text-lime-500'>Loading Puzzle list...</div>
+          </>}>
+            <PuzzleList list={api.list} selected={selected_puzzle()?.id} on_select_puzzle={on_puzzle_selected} />
+          </Suspense>
+        </ErrorBoundary>
       </div>
       <div class='flex flex-col flex-1'>
         <div class='flex-1 moves-wrap'>
@@ -343,39 +328,6 @@ function Moves(props: { history: string[] }) {
         }
         </For>
       </div>
-    </div>
-  </>)
-}
-
-function PuzzleList(props: { selected: PuzzleId, on_select_puzzle: (p: Puzzle) => void }) {
-
-  let [state] = useWorker()
-
-  return (<>
-  <div class='flex flex-col overflow-y-scroll max-h-50'>
-    <For each={state.list}>{ (p, i) => 
-        <PuzzleItem n={i() + 1} selected={props.selected === p.id} puzzle={p} on_click={() => props.on_select_puzzle(p)} />
-    }</For>
-  </div>
-  </>)
-}
-
-function PuzzleItem(props: { n: number, selected: boolean, puzzle: Puzzle, on_click: () => void }) {
-
-  createEffect(() => {
-    if (props.selected) {
-      $el.scrollIntoView({block: 'nearest'})
-    }
-  })
-
-  let $el!: HTMLDivElement
-
-  return (<>
-    <div ref={$el} onClick={props.on_click} class={`flex items-center px-1 py-1 ${props.selected ? 'bg-amber-200' : 'bg-slate-400'} hover:bg-gray-200 cursor-pointer`}>
-      <div class='text-sm font-bold ml-0.5 mr-2'>{props.n}.</div>
-      <div><a class='text-blue-800' href={props.puzzle.link} target="_blank">{props.puzzle.id}</a></div>
-      <div class='flex-2'></div>
-      <div class='text-xs flex-1'>{props.puzzle.tags}</div>
     </div>
   </>)
 }

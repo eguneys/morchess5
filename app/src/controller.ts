@@ -9,6 +9,7 @@ import { getMonthsUTC, getTodaysUTC, getWeeksUTC, getYearsUTC } from "./dates.js
 import { getDefaultHighWaterMark } from "stream";
 import { DEV } from "./config.js";
 import { inc, metrics } from "./metrics.js";
+import { run } from "./pl_worker/pl_worker.js";
 
 
 export const gen_id8 = () => Math.random().toString(16).slice(2, 10)
@@ -95,7 +96,7 @@ router.post('/score', async (req, res) => {
 })
 
 
-router.get('/prolog_code', async (req, res) => {
+router.post('/prolog_code', async (req, res) => {
     await rateLimit(req.user_id!, 'handle_fast', 8, 10)
     await rateLimit(req.user_id!, 'handle_hour', 60, 3600)
 
@@ -106,5 +107,11 @@ router.get('/prolog_code', async (req, res) => {
         return res.status(400).json({ error: 'Code too long' })
     }
 
-    res.json({code})
+    try {
+      let result = await run(code)
+      res.json(result)
+    } catch (e) {
+      res.json({ error: e })
+    }
+
 })

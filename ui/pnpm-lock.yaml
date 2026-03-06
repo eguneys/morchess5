@@ -6,6 +6,7 @@ settings:
 
 overrides:
   vite: ^8.0.0-beta.13
+  hopefox: link:../../hopefox
 
 importers:
 
@@ -24,23 +25,23 @@ importers:
         specifier: ^4.2.1
         version: 4.2.1(vite@8.0.0-beta.16(@types/node@24.11.0)(jiti@2.6.1))
       hopefox:
-        specifier: link:..\hopefox
-        version: link:../hopefox
+        specifier: link:..\..\hopefox
+        version: link:../../hopefox
       solid-js:
-        specifier: ^1.9.10
+        specifier: ^1.9.11
         version: 1.9.11
       tailwindcss:
         specifier: ^4.2.1
         version: 4.2.1
     devDependencies:
       '@types/node':
-        specifier: ^24.10.1
+        specifier: ^24.11.0
         version: 24.11.0
       typescript:
         specifier: ~5.9.3
         version: 5.9.3
       vite:
-        specifier: ^8.0.0-beta.13
+        specifier: 8.0.0-beta.16
         version: 8.0.0-beta.16(@types/node@24.11.0)(jiti@2.6.1)
       vite-plugin-solid:
         specifier: ^2.11.10

@@ -60,7 +60,7 @@ handle(Line) :-
     reply(json{ id: Dict.get(id), result: Result}).
 
 reply(Result) :-
-    json_write_dict(current_output, Result),
+    json_write_dict(current_output, Result, [width(0)]),
     nl,
     flush_output.
 
@@ -95,4 +95,4 @@ safe_run(Result) :-
 run_analysis(Result) :-
     findall(X, user_land_entry:green(X), Greens),
     findall(X, user_land_entry:red(X), Reds),
-    Result = json{ green: Greens, red: Reds}.
+    Result = json{ green: Greens, red: Reds, pieces: [], moves: [] }.

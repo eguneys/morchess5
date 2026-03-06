@@ -13,19 +13,20 @@
     "@solid-primitives/storage": "^4.3.4",
     "@solidjs/router": "^0.15.4",
     "@tailwindcss/vite": "^4.2.1",
-    "hopefox": "link:..\\hopefox",
-    "solid-js": "^1.9.10",
+    "hopefox": "link:..\\..\\hopefox",
+    "solid-js": "^1.9.11",
     "tailwindcss": "^4.2.1"
   },
   "devDependencies": {
-    "@types/node": "^24.10.1",
+    "@types/node": "^24.11.0",
     "typescript": "~5.9.3",
-    "vite": "^8.0.0-beta.13",
+    "vite": "8.0.0-beta.16",
     "vite-plugin-solid": "^2.11.10"
   },
   "pnpm": {
     "overrides": {
-      "vite": "^8.0.0-beta.13"
+      "vite": "^8.0.0-beta.13",
+      "hopefox": "link:../../hopefox"
     }
   }
 }

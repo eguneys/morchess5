@@ -76,7 +76,6 @@ class PrologClient {
           try {
             const response = JSON.parse(line);
             const { id, result, error } = response;
-            
             // Find and resolve the corresponding promise
             const handler = this.pendingRequests.get(id);
             if (handler) {
@@ -104,7 +103,7 @@ class PrologClient {
     let code = validate(unsafeCode)
 
     if (!code) {
-      return Promise.reject(new Error('Invalid Prolog code'))
+      return Promise.resolve({error: "Invalid Prolog Code."})
     }
     const id = this.nextRequestId++;
     const payload = JSON.stringify({ id, code });
