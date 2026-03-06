@@ -41,6 +41,7 @@ type EditorActions = {
     normal_mode_goto_beginning_of_line(): void
     normal_mode_delete_delete_line(): void
     normal_mode_yank_text(): void
+    normal_mode_change_change_line(): void
 }
 
 export default function Editor(props: { text: string, on_save_text: (_: string) => void }) {
@@ -237,6 +238,17 @@ export default function Editor(props: { text: string, on_save_text: (_: string) 
                 set_state('motion_cmd', 'none')
             }
         },
+        normal_mode_change_change_line() {
+
+            if (state.motion_cmd === 'none') {
+                set_state('motion_cmd', 'change')
+            } else if (state.motion_cmd === 'change') {
+                set_state('yanked_line', state.lines[state.cursor_line])
+                set_state('lines', _ => _.toSpliced(state.cursor_line, 1, ''))
+                set_state('motion_cmd', 'none')
+                set_state('mode', 'edit')
+            }
+        },
         normal_mode_yank_text() {
 
             if (state.yanked_line !== '') {
@@ -260,7 +272,7 @@ export default function Editor(props: { text: string, on_save_text: (_: string) 
     })
 
     return (<>
-    <div class='editor h-full w-full flex flex-col space-mono-regular text-2xl font-bold bg-zinc-700 text-amber-50'>
+    <div class='editor h-full w-full flex flex-col space-mono-regular text-xl font-bold bg-zinc-700 text-amber-50'>
         <div class='area whitespace-pre flex-1'>
             <For each={state.lines}>{ (line , index) => 
             <Show when={index() === state.cursor_line} fallback={
@@ -379,6 +391,7 @@ function KeyBindings(state: EditorState, actions: EditorActions) {
                 if (e.shiftKey) {
                     actions.normal_mode_change_end_of_line()
                 } else {
+                    actions.normal_mode_change_change_line()
                 }
                 break
             case 'w':

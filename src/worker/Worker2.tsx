@@ -13,8 +13,8 @@ type WorkerState = {
 }
 
 type WorkerActions = {
-    one(id: string, program: string, cursor: number): void
-    batch(program: string): void
+    one(id: string, program: string, query: Record<string, string>, ursor: number): void
+    batch(program: string, query: Record<string, string>): void
 }
 
 type WorkerStore = [WorkerState, WorkerActions]
@@ -86,11 +86,11 @@ export const WorkerProvider = (props: { children: JSX.Element }) => {
 
 
     let actions = {
-        one(id: PuzzleId, program: Program, cursor: number) {
-            set_fetch_run_on_one({ id, program, cursor })
+        one(id: PuzzleId, program: Program, query: Record<string, string>, cursor: number) {
+            set_fetch_run_on_one({ id, program, query, cursor })
         },
-        batch(program: Program) {
-            set_fetch_run_on_list({ program })
+        batch(program: Program, query: Record<string, string>) {
+            set_fetch_run_on_list({ program, query })
         }
     }
 

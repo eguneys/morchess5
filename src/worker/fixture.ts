@@ -1,9 +1,11 @@
 import { Chess, makeFen, makeSan, parseFen, parseUci } from "hopefox"
 import a_thousand_sorted from '../assets/data/athousand_sorted.csv?raw'
+import b_forks from '../assets/data/b_forks_1000.csv?raw'
 
 //export const a_hundred = async () => parse_puzzles(await fetch('./data/a_hundred_puzzles.csv').then(_ => _.text()))
 
-export const puzzles = async () => parse_puzzles(a_thousand_sorted)
+export const puzzles = async () => parse_puzzles(b_forks)
+export const puzzles2 = async () => parse_puzzles(a_thousand_sorted)
 
 //export const tenk = async () => parse_puzzles(await fetch('./data/tenk_puzzle.csv').then(_ => _.text()))
 

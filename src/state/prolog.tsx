@@ -21,7 +21,6 @@ export const TauProvider = (props: { children: JSX.Element }) => {
 
     const actions = {
         async query(program: string, query: Record<string, string>) {
-            console.log(query)
             return _prolog_query(program, query)
         }
     }
