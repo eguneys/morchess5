@@ -1,8 +1,8 @@
-import geom from './assets/prolog_scripts/geometry.pl?raw'
-import node_id from './assets/prolog_scripts/node_id.pl?raw'
-import piece_at from './assets/prolog_scripts/piece_at.pl?raw'
-import types from './assets/prolog_scripts/types.pl?raw'
-import fen from './assets/prolog_scripts/fen.pl?raw'
+import geom from '../assets/prolog_scripts/geometry.pl?raw'
+import node_id from '../assets/prolog_scripts/node_id.pl?raw'
+import piece_at from '../assets/prolog_scripts/piece_at.pl?raw'
+import types from '../assets/prolog_scripts/types.pl?raw'
+import fen from '../assets/prolog_scripts/fen_tau_factor.pl?raw'
 import { fen_pos, square } from 'hopefox'
 
 
@@ -30,6 +30,8 @@ export const LoadFen = (fen: FEN) => {
     let turn = pos.turn
     return `
     load_fen :-
+    retract_all(base_side_to_move(_, _)),
+    retract_all(base_piece_at(_, _, _, _)),
     assertz(base_side_to_move(root, ${turn})),
     ${pieses.map(([Sq, Piece, Color]) => `assertz(base_piece_at(root, ${Sq}, ${Piece}, ${Color}))`).join(',\n')}.
     `
