@@ -1,3 +1,4 @@
+:- use_module(library(pairs)).
 :- use_module(library(json)).
 :- initialization(loop).
 
@@ -121,9 +122,28 @@ move_to_pair(move(A,B), [A,B]) :-
   ground(A),
   ground(B).
 
-  safe_findall(Template, Goal, List) :-
-    findall(Template,
-        ( Goal,
-          ground(Template)
-        ),
-        List).
+safe_findall(Template, Goal, List) :-
+  findall(Template,
+      ( Goal,
+        ground(Template)
+      ),
+      List).
+
+
+history_group_by_category(JSON) :-
+    safe_findall(Category-Items, (
+        user_land_entry:history(Category, XItems), 
+        maplist(move_to_pair, XItems, Items)
+    ) ,Pairs),
+    sort(Pairs, SortedPairs),
+    group_pairs_by_key(SortedPairs, Grouped),
+    convert_to_json(Grouped, JSON).
+
+% Main predicate to convert the list to a dict
+convert_to_json(List, Dict) :-
+    maplist(prepare_pair, List, Pairs),
+    dict_create(Dict, json, Pairs).
+
+% Helper to ensure keys are atoms (required for dict keys)
+prepare_pair(Category-Items, CatAtom-Items) :-
+    atom_string(CatAtom, Category).

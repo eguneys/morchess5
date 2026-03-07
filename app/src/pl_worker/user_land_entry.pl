@@ -6,4 +6,4 @@
 
 :- dynamic green/1.
 :- dynamic red/1.
-:- dynamic history/1.
+:- dynamic history/2.

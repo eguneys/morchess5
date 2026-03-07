@@ -43,10 +43,16 @@ function validate(code: string) {
   const builtin_facts = [...Square_Names, ...roles, ...colors, ...Root]
   let builtin_functions = Builtin_Functions
 
+  let categories = []
+
   let variables = []
 
   let user_defined_functions = []
   for (let line of lines) {
+    for (let m of line.matchAll(/^history\((c_[A-Z][A-Za-z_0-9]*),/g)) {
+      categories.push(m[1])
+    }
+
     for (let m of line.matchAll(/^([a-z][A-Za-z_0-9]*) :- /g)) {
       user_defined_functions.push(m[1])
     }
@@ -64,12 +70,12 @@ function validate(code: string) {
     }
   }
 
-
-
-
   for (let line of lines) {
 
     for (let m of line.matchAll(/([A-Za-z_][A-Za-z_0-9]*)/g)) {
+      if (categories.includes(m[1])) {
+        continue
+      }
       if (user_defined_functions.includes(m[1])) {
         continue
       } 

@@ -1,4 +1,22 @@
 import { fen_pos, makeFen, makeSan, parseUci } from "hopefox"
+import type { PuzzleId } from "../components/PuzzleList"
+
+export type PuzzleCategory = string
+
+export type ApiCodePuzzleStats = {
+    categories: Record<PuzzleCategory, CategoryStat>
+}
+
+export type CategoryStat = {
+    True_Positive: number
+    False_Positive: number
+    True_Negative: number
+    False_Negative: number
+    True_Positive_Top_10: PuzzleId[]
+    False_Positive_Top_10: PuzzleId[]
+    True_Negative_Top_10: PuzzleId[]
+    False_Negative_Top_10: PuzzleId[]
+}
 
 export type ApiPuzzle = {
     id: string
