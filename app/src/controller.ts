@@ -127,7 +127,7 @@ router.post('/prolog_code', async (req, res) => {
         return res.status(400).json({ error: 'Code too long' })
     }
 
-    let fen = puzzleFixture.find(_ => _.id === puzzle_id)?.fen
+    let fen = puzzleFixture.find(_ => _.id === puzzle_id)?.fen2
 
     if (!fen) {
       return res.status(400).json({ error: "Puzzle not found." })
@@ -135,6 +135,9 @@ router.post('/prolog_code', async (req, res) => {
 
     try {
       let result = await run(code, fen)
+      if (!result) {
+        return res.json({ error: 'command failed.'})
+      }
       res.json(result)
     } catch (e) {
       res.json({ error: e })

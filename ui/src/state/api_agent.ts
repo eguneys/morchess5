@@ -25,6 +25,7 @@ const $ = async (path: string, opts?: RequestInit) => {
     if (!res.ok) {
         const text = await res.text()
         throw new Error(`API ${res.status}: ${text}`)
+        return { error: text }
     }
 
     return res.json()

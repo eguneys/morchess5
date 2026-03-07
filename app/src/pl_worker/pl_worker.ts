@@ -19,9 +19,20 @@ const roles = [
 
 const colors = ['white', 'black']
 
-const Root = ['root', 'move']
+const Root = ['root', 'move', 'step']
 
-const Builtin_Functions = ['green', 'red', 'piece_at', 'history']
+const Builtin_Functions = `
+green
+red
+piece_at
+history
+hyp_world
+attacks
+side_to_move
+opposite_color
+bishop_attack
+empty
+`.trim().split(`\n`)
 
 const Square_Names = files.flatMap(file => ranks.map(rank => `${file}${rank}`))
 
@@ -39,6 +50,12 @@ function validate(code: string) {
     for (let m of line.matchAll(/^([a-z][A-Za-z_0-9]*) :- /g)) {
       user_defined_functions.push(m[1])
     }
+    for (let m of line.matchAll(/^([a-z][A-Za-z_0-9]*):- /g)) {
+      user_defined_functions.push(m[1])
+    }
+    for (let m of line.matchAll(/^([a-z][A-Za-z_0-9]*)\(/g)) {
+      user_defined_functions.push(m[1])
+    }
   }
 
   for (let line of lines) {
@@ -49,12 +66,14 @@ function validate(code: string) {
 
 
 
-  let replace_all = [...builtin_functions, ...user_defined_functions]
 
   for (let line of lines) {
 
     for (let m of line.matchAll(/([A-Za-z_][A-Za-z_0-9]*)/g)) {
-      if (replace_all.includes(m[1])) {
+      if (user_defined_functions.includes(m[1])) {
+        continue
+      } 
+      if (builtin_functions.includes(m[1])) {
         continue
       } 
       if (variables.includes(m[1])) {
@@ -67,6 +86,7 @@ function validate(code: string) {
     }
   }
 
+  let replace_all = [...builtin_functions]
   for (let r of replace_all) {
     code = code.replaceAll(r, `user_land_entry:${r}`)
   }
@@ -154,7 +174,7 @@ class PrologClient {
 
 export async function run(code: string, Fen: string) {
   try {
-  return await PrologClient.Instance.execute(code, Fen)
+    return await PrologClient.Instance.execute(code, Fen)
   } catch (e) {
     console.error(e)
   }

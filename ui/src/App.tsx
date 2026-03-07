@@ -1,6 +1,6 @@
 import { Chessboard } from "./components/Chessboard"
 import Editor from "./components/Editor"
-import { createMemo, ErrorBoundary, For, Show, Suspense } from "solid-js"
+import { createEffect, createMemo, ErrorBoundary, For, Show, Suspense } from "solid-js"
 import { createStore } from "solid-js/store"
 import type { DrawShape } from "@lichess-org/chessground/draw"
 import type { Key } from "@lichess-org/chessground/types"
@@ -76,6 +76,9 @@ function Home() {
       return undefined
     }
     return res
+  })
+  createEffect(() => {
+    console.log(api_Queries())
   })
 
   const api_Error = createMemo<ApiError | undefined>(() => {

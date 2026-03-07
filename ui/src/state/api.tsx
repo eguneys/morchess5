@@ -45,7 +45,9 @@ export const ApiProvider = (props: { children: JSX.Element }) => {
 
 
     const get_Queries = createAsync<ApiQueries>(async () => {
-        if (state.program === '' || state.selected_puzzle_id === '') {
+        let program = state.program
+        let id = state.selected_puzzle_id
+        if (!program || !id) {
             return { error: 'not initialized' }
         }
         return $api_agent.prolog_code(state.program, state.selected_puzzle_id)

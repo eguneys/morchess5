@@ -1,4 +1,4 @@
-import { Chess, makeFen, makeSan, parseFen, parseUci } from "hopefox"
+import { fen_pos, makeFen, makeSan, parseUci } from "hopefox"
 
 export type ApiPuzzle = {
     id: string
@@ -35,7 +35,7 @@ export function convert_api_puzzle(p: ApiPuzzle) {
         get move_fens() {
             let move_fens: string[] = []
 
-            let pos = Chess.fromSetup(parseFen(fen).unwrap()).unwrap()
+            let pos = fen_pos(fen)
             solution.split(' ').forEach((uci, i) => {
                 let move = parseUci(uci)!
                 if (initial)

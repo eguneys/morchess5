@@ -18,9 +18,9 @@ safe_query(user_land_entry:green(_)).
 
 run_with_limit(Goal, Result) :-
     catch(
-        call_with_time_limit(2, 
+        call_with_time_limit(8, 
             catch(
-                (   call_with_depth_limit(Goal, 1000, _Depth),
+                (   call_with_depth_limit(Goal, 100000, _Depth),
                     % If we get here, Goal succeeded with its own Result binding
                     % Result is already bound by Goal at this point
                     true
@@ -33,29 +33,42 @@ run_with_limit(Goal, Result) :-
         Result = timeout
     ).
 
-
 loop :-
     repeat,
     read_line_to_string(user_input, Line),
-    (Line == end_of_file 
-    -> halt
-    ; catch(handle(Line),
-            Error, 
-            (
-                atom_json_dict(Line, Dict, []),
-                RequestId = Dict.get(id),
-                print_message(error, Error),
-                reply(json{id: RequestId, error: 'command handle error'})
-            )
+    (   Line == end_of_file
+    ->  halt
+    ;   process_line(Line),
+        fail
+    ).
+
+process_line(Line) :-
+    catch(
+        atom_json_dict(Line, Dict, []),
+        Error,
+        (
+            print_message(error, Error),
+            reply(json{id:null, error:'invalid json'}),
+            fail
         )
     ),
-    fail.
+    RequestId = Dict.get(id),
+
+    (   catch(handle(Dict), Error,
+            (
+                print_message(error, Error),
+                reply(json{id:RequestId, error:'command handle error'}),
+                fail
+            ))
+    ->  true
+    ;   reply(json{id:RequestId, error:'command failed'})
+    ).
+
 
 print_message(Type, Message) :-
   format(user_error, "[~w]: ~w~n", [Type, Message]).
 
-handle(Line) :-
-    atom_json_dict(Line, Dict, []),
+handle(Dict) :-
     run_query(Dict, Result),
     reply(json{ id: Dict.get(id), result: Result}).
 
@@ -95,11 +108,22 @@ safe_run(Result) :-
   ).
 
 run_analysis(Result) :-
-    findall(X, user_land_entry:green(X), Greens),
-    findall(X, user_land_entry:red(X), Reds),
-    findall([X, Y, Z], user_land_entry:piece_at(root, X, Y, Z), Pieces),
+    safe_findall(X, user_land_entry:green(X), Greens),
+    safe_findall(X, user_land_entry:red(X), Reds),
+    safe_findall([X, Y, Z], user_land_entry:piece_at(root, X, Y, Z), Pieces),
     user_land_entry:history(XMoves),
     maplist(move_to_pair, XMoves, Moves),
     Result = json{ green: Greens, red: Reds, pieces: Pieces, moves: Moves }.
 
-move_to_pair(move(A,B), [A,B]).
+
+
+move_to_pair(move(A,B), [A,B]) :-
+  ground(A),
+  ground(B).
+
+  safe_findall(Template, Goal, List) :-
+    findall(Template,
+        ( Goal,
+          ground(Template)
+        ),
+        List).
