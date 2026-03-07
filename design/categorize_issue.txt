@@ -1,0 +1,13 @@
+there are puzzle categories where you find moves like
+
+puzzle_category(bishop_fork, Move) :- candidate_bishop_forks(Move).
+
+puzzle_category(queen_capture, Move) :- candidate_queen_capture(Move).
+
+
+now these rules operate on the root position and root fact is loaded with a
+
+load_fen(FEN). 
+
+What I do is iterate over all Fens, load the fen with load_fen(FEN). then query these puzzle_category for finding moves, and keeping the statistics for each category, by comparing the found move against the solution move. Here's a draft I've been working on, it works, but it has a subtle issue:
+

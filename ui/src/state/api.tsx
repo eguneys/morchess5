@@ -1,8 +1,8 @@
-import { createContext, useContext, type JSX } from 'solid-js'
+import { createContext, createSignal, untrack, useContext, type JSX } from 'solid-js'
 import { createStore } from 'solid-js/store'
 import { create_agent, type ApiQueries, type Pagination } from './api_agent'
 import { createAsync } from '@solidjs/router'
-import { convert_api_puzzle, type ApiPuzzle, type Puzzle } from './puzzle_fixture'
+import { convert_api_puzzle, type ApiCodePuzzleStats, type ApiPuzzle, type Puzzle } from './puzzle_fixture'
 import type { PuzzleId } from '../components/PuzzleList'
 
 export const useApi = () => useContext(ApiContext)!
@@ -12,11 +12,13 @@ const ApiContext = createContext<ApiStore>()
 type ApiState = {
     queries?: ApiQueries
     list?: Puzzle[]
+    puzzle_stats?: ApiCodePuzzleStats
 }
 
 type ApiActions = {
     set_program(program: string): Promise<void>
     set_selected_puzzle_id(puzzle_id: PuzzleId): Promise<void>
+    run_on_puzzle_set(): Promise<void>
 }
 
 type ApiStoreState = {
@@ -36,6 +38,20 @@ export const ApiProvider = (props: { children: JSX.Element }) => {
         program: '',
         selected_puzzle_id: ''
     })
+
+
+    const [fetch_puzzle_set_stats, set_fetch_puzzle_set_stats] = createSignal<boolean>(false, { equals: false })
+
+
+    
+    const get_PuzzleStats = createAsync<ApiCodePuzzleStats | undefined>(async () => {
+        if (!fetch_puzzle_set_stats()) {
+            return undefined
+        }
+        return $api_agent.puzzle_stats(untrack(() => state.program))
+    })
+
+
 
     
     const get_PuzzleList = createAsync<Pagination<ApiPuzzle>>(async () => {
@@ -59,6 +75,9 @@ export const ApiProvider = (props: { children: JSX.Element }) => {
         },
         async set_selected_puzzle_id(puzzle_id: string) {
             set_state('selected_puzzle_id', puzzle_id)
+        },
+        async run_on_puzzle_set() {
+            set_fetch_puzzle_set_stats(true)
         }
     }
 
@@ -71,6 +90,9 @@ export const ApiProvider = (props: { children: JSX.Element }) => {
         },
         get list(): Puzzle[] | undefined {
             return get_PuzzleList()?.items.map(convert_api_puzzle)
+        },
+        get puzzle_stats(): ApiCodePuzzleStats | undefined {
+            return get_PuzzleStats()
         }
 
     }

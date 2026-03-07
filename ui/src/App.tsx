@@ -43,7 +43,7 @@ type PersistedState = {
 
 function Home() {
 
-  let [api, { set_program, set_selected_puzzle_id }] = useApi()
+  let [api, { set_program, set_selected_puzzle_id, run_on_puzzle_set }] = useApi()
 
   const [state, set_state] = createStore<State>({
     program: '',
@@ -67,7 +67,6 @@ function Home() {
     }
     set_selected_puzzle_id(state.selected_puzzle.id)
   }
-
 
   const api_Queries = createMemo<ApiSuccess | undefined>(() => {
     let res = api.queries
@@ -215,11 +214,18 @@ function Home() {
     set_program(text)
     run_on_one_puzzle()
   }
+  const on_execute_command = (command: string) => {
+    if (command === 'l') {
+      run_on_puzzle_set()
+    }
+  }
+
+
 
   return (<>
     <div class='flex flex-row h-screen bg-slate-500'>
       <div class='relative flex-2 editor-wrap overflow-hidden'>
-        <Editor text={state.program} on_save_text={on_program_changed}/>
+        <Editor text={state.program} on_save_text={on_program_changed} on_execute_command={on_execute_command}/>
         <Show when={api_Error()}>{error => 
           <div class='fade-in absolute rounded-sm p-2 bottom-0 right-0 text-amber-50 bg-red-500'>{error().error}</div>
           }</Show>

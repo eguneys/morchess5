@@ -2,10 +2,12 @@
 import { type ChildProcessWithoutNullStreams, spawn } from "node:child_process";
 import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { Puzzle } from "../puzzles_fixture.js";
     
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 const prolog = spawn("swipl", [__dirname + "/worker.pl"]);
+const prolog2_categorizer = spawn("swipl", [__dirname + "/worker_category.pl"]);
 
 const files = 'abcdefgh'.split('')
 const ranks = '12345678'.split('')
@@ -36,7 +38,7 @@ empty
 
 const Square_Names = files.flatMap(file => ranks.map(rank => `${file}${rank}`))
 
-function validate(code: string) {
+export function validate(code: string) {
 
   let lines = code.split('\n')
 
@@ -100,9 +102,10 @@ function validate(code: string) {
   return code
 }
 
-class PrologClient {
+export class PrologClient {
 
   static Instance = new PrologClient(prolog)
+  static Instance2_Categorizer = new PrologClient(prolog2_categorizer)
 
   prolog: ChildProcessWithoutNullStreams
   pendingRequests: Map<number, { resolve: (value: any) => void, reject: (reason?: any) => void }>
@@ -151,6 +154,37 @@ class PrologClient {
     });
   }
   
+
+  execute_category(unsafeCode: string, puzzles: Puzzle[]) {
+    let code = validate(unsafeCode)
+
+    if (!code) {
+      return Promise.resolve({error: "Invalid Prolog Code."})
+    }
+
+    let rows = puzzles.map(_ => [_.id, _.fen, _.solution])
+
+    const id = this.nextRequestId++;
+    const payload = JSON.stringify({ id, code, rows });
+    
+    return new Promise((resolve, reject) => {
+      // Store promise handlers
+      this.pendingRequests.set(id, { resolve, reject });
+      
+      // Send request
+      this.prolog.stdin.write(payload + '\n');
+      
+      // Timeout handling
+      setTimeout(() => {
+        if (this.pendingRequests.has(id)) {
+          this.pendingRequests.delete(id);
+          reject(new Error('Request timeout'));
+        }
+      }, 8000);
+    });
+  }
+
+
   execute(unsafeCode: string, fen: string) {
     let code = validate(unsafeCode)
 
@@ -177,6 +211,16 @@ class PrologClient {
     });
   }
 }
+
+export async function run_category(code: string, puzzles: Puzzle[]) {
+  try {
+    return await PrologClient.Instance2_Categorizer.execute_category(code, puzzles)
+  } catch (e) {
+    console.error(e)
+  }
+}
+
+
 
 export async function run(code: string, Fen: string) {
   try {

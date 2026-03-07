@@ -1,5 +1,5 @@
 import type { PuzzleId } from "../components/PuzzleList"
-import type { ApiPuzzle } from "./puzzle_fixture"
+import type { ApiCodePuzzleStats, ApiPuzzle } from "./puzzle_fixture"
 
 export type Pagination<T> = {
     page: number,
@@ -42,6 +42,9 @@ async function $post(path: string, body: any = {}) {
 
 export function create_agent(): Agent {
     return {
+        async puzzle_stats(code: string) {
+            return $post('/prolog_code', { code, list: true })
+        },
         async prolog_code(code: string, puzzle_id: PuzzleId) {
             return $post('/prolog_code', { code, puzzle_id })
         },
@@ -53,6 +56,7 @@ export function create_agent(): Agent {
 
 
 export type Agent = {
+    puzzle_stats(code: string): Promise<ApiCodePuzzleStats>
     puzzle_list(): Promise<Pagination<ApiPuzzle>>
     prolog_code: (code: string, puzzle_id: PuzzleId) => Promise<ApiQueries>
 }

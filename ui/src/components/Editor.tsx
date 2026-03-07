@@ -47,7 +47,7 @@ type EditorActions = {
     normal_mode_insert_wall_of_text(res: string): void
 }
 
-export default function Editor(props: { text: string, on_save_text: (_: string) => void }) {
+export default function Editor(props: { text: string, on_save_text: (_: string) => void, on_execute_command: (_: string) => void }) {
 
     const [state, set_state] = createStore<EditorState>({
         yanked_text: '',
@@ -84,6 +84,7 @@ export default function Editor(props: { text: string, on_save_text: (_: string) 
             set_state('input_command', '')
             save_program()
         }
+        props.on_execute_command(command)
     }
 
     let actions: EditorActions = {

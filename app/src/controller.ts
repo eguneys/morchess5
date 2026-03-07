@@ -9,7 +9,7 @@ import { getMonthsUTC, getTodaysUTC, getWeeksUTC, getYearsUTC } from "./dates.js
 import { getDefaultHighWaterMark } from "stream";
 import { DEV } from "./config.js";
 import { inc, metrics } from "./metrics.js";
-import { run } from "./pl_worker/pl_worker.js";
+import { run, run_category } from "./pl_worker/pl_worker.js";
 import { paginate, puzzleFixture, transformList } from "./puzzles_fixture.js";
 
 
@@ -121,26 +121,41 @@ router.post('/prolog_code', async (req, res) => {
   }
 
 
-    const { code, puzzle_id } = req.body
+    const { code, puzzle_id, list } = req.body
 
     if (code.length > 5000) {
         return res.status(400).json({ error: 'Code too long' })
     }
+    if (list) {
+      let puzzles = puzzleFixture.slice(0, 1000)
 
-    let fen = puzzleFixture.find(_ => _.id === puzzle_id)?.fen2
-
-    if (!fen) {
-      return res.status(400).json({ error: "Puzzle not found." })
-    }
-
-    try {
-      let result = await run(code, fen)
-      if (!result) {
-        return res.json({ error: 'command failed.'})
+      try {
+        let result = await run_category(code, puzzles)
+        if (!result) {
+          return res.json({ error: 'category command failed.' })
+        }
+        res.json(result)
+      } catch (e) {
+        res.json({ error: e })
       }
-      res.json(result)
-    } catch (e) {
-      res.json({ error: e })
+    } else {
+
+      let fen = puzzleFixture.find(_ => _.id === puzzle_id)?.fen2
+
+      if (!fen) {
+        return res.status(400).json({ error: "Puzzle not found." })
+      }
+
+
+      try {
+        let result = await run(code, fen)
+        if (!result) {
+          return res.json({ error: 'command failed.' })
+        }
+        res.json(result)
+      } catch (e) {
+        res.json({ error: e })
+      }
     }
 
 })

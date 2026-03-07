@@ -16,7 +16,7 @@ function parse_puzzles(str: string): Puzzle[] {
 
 
     return {
-      id, fen, solution: moves, themes: tags, fen2
+      id, fen, moves, solution: moves.split(' ')[1], themes: tags, fen2
     }
 
   })
@@ -26,6 +26,7 @@ export type Puzzle = {
     id: string
     fen: string
     fen2: string
+    moves: string
     solution: string
     themes: string
 }
