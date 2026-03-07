@@ -69,13 +69,13 @@ Retrieved 2026-01-12, License - CC BY-SA 4.0
 }
 
 ::-webkit-scrollbar-track {
-  border-radius: 100vh;
+  border-radius: 3px;
   background: #f7f4ed;
 }
 
 ::-webkit-scrollbar-thumb {
   background: #e0cbcb;
-  border-radius: 100vh;
+  border-radius: 3px;
   border: 3px solid #f6f7ed;
 }
 

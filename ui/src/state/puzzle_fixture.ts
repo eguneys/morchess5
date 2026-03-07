@@ -8,14 +8,9 @@ export type ApiCodePuzzleStats = {
 }
 
 export type CategoryStat = {
-    True_Positive: number
-    False_Positive: number
-    True_Negative: number
-    False_Negative: number
-    True_Positive_Top_10: PuzzleId[]
-    False_Positive_Top_10: PuzzleId[]
-    True_Negative_Top_10: PuzzleId[]
-    False_Negative_Top_10: PuzzleId[]
+    tp: PuzzleId[],
+    fp: PuzzleId[],
+    n: number
 }
 
 export type ApiPuzzle = {

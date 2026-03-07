@@ -1,21 +1,18 @@
-import { createContext, createSignal, untrack, useContext, type JSX } from 'solid-js'
+import { createSignal, untrack } from 'solid-js'
 import { createStore } from 'solid-js/store'
 import { create_agent, type ApiQueries, type Pagination } from './api_agent'
 import { createAsync } from '@solidjs/router'
 import { convert_api_puzzle, type ApiCodePuzzleStats, type ApiPuzzle, type Puzzle } from './puzzle_fixture'
 import type { PuzzleId } from '../components/PuzzleList'
+import type { MorStore } from '.'
 
-export const useApi = () => useContext(ApiContext)!
-
-const ApiContext = createContext<ApiStore>()
-
-type ApiState = {
+export type ApiState = {
     queries?: ApiQueries
     list?: Puzzle[]
     puzzle_stats?: ApiCodePuzzleStats
 }
 
-type ApiActions = {
+export type ApiActions = {
     set_program(program: string): Promise<void>
     set_selected_puzzle_id(puzzle_id: PuzzleId): Promise<void>
     run_on_puzzle_set(): Promise<void>
@@ -26,11 +23,10 @@ type ApiStoreState = {
     selected_puzzle_id: string
 }
 
-type ApiStore = [ApiState, ApiActions]
+export type ApiStore = [ApiState, ApiActions]
 
 
-
-export const ApiProvider = (props: { children: JSX.Element }) => {
+export function create_api(mor_store: MorStore) {
 
     let $api_agent = create_agent()
 
@@ -48,7 +44,11 @@ export const ApiProvider = (props: { children: JSX.Element }) => {
         if (!fetch_puzzle_set_stats()) {
             return undefined
         }
-        return $api_agent.puzzle_stats(untrack(() => state.program))
+        let res = await $api_agent.puzzle_stats(untrack(() => state.program))
+
+        mor_store[1].home_actions.set_category(Object.keys(res.categories)[0])
+
+        return res
     })
 
 
@@ -100,7 +100,5 @@ export const ApiProvider = (props: { children: JSX.Element }) => {
     
     const store: ApiStore = [state2, actions]
 
-    return <ApiContext.Provider value={store}>
-        {props.children}
-    </ApiContext.Provider>
+    return store
 }

@@ -100,7 +100,7 @@ router.get('/puzzle_list', async (req, res) => {
   }
 
     const page = Number(req.query.page ?? 1)
-    const pageSize = Math.min(100, Number(req.query.pageSize ?? 10))
+    const pageSize = Math.min(100, Number(req.query.pageSize ?? 30))
 
     const pageData = paginate(puzzleFixture, page, pageSize)
 
@@ -134,7 +134,7 @@ router.post('/prolog_code', async (req, res) => {
         if (!result) {
           return res.json({ error: 'category command failed.' })
         }
-        res.json(result)
+        res.json({ categories: result })
       } catch (e) {
         res.json({ error: e })
       }

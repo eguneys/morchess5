@@ -1,6 +1,7 @@
 import './core'
-import { puzzles, type Puzzle } from './fixture'
-import { _prolog_query } from '../state/prolog'
+import { _prolog_query } from '../state/_prolog'
+import type { Puzzle } from '../state/puzzle_fixture'
+import { puzzles } from './fixture'
 
 let pp: Puzzle[]
 let skips: number[]

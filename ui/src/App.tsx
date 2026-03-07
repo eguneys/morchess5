@@ -1,213 +1,22 @@
 import { Chessboard } from "./components/Chessboard"
 import Editor from "./components/Editor"
-import { createEffect, createMemo, ErrorBoundary, For, Show, Suspense } from "solid-js"
-import { createStore } from "solid-js/store"
-import type { DrawShape } from "@lichess-org/chessground/draw"
-import type { Key } from "@lichess-org/chessground/types"
-import { EMPTY_FEN, fen_pos, makeFen, makeSan, parseSquare, parseUci, square } from "hopefox"
-import { makePersisted } from "@solid-primitives/storage"
-import { ApiProvider, useApi } from "./state/api"
-import { type Piece, SquareSet } from "hopefox"
-import { PuzzleList, type PuzzleId } from "./components/PuzzleList"
-import { is_api_error, type ApiError, type ApiSuccess } from "./state/api_agent"
-import type { Puzzle } from "./state/puzzle_fixture"
+import { createEffect, For, Show } from "solid-js"
+import { PuzzleList } from "./components/PuzzleList"
+import { MorProvider, useMor } from "./state"
+import { ListCategoryFilter } from "./state/Home"
 
 function App() {
   return <>
-      <ApiProvider>
-        <Home />
-      </ApiProvider>
+    <MorProvider>
+      <Home />
+    </MorProvider>
   </>
 }
 
 
-type State = {
-  program: string
-  selected_puzzle: SelectedPuzzleInfo | undefined
-}
-
-type FEN = string
-type Move = any
-type SelectedPuzzleInfo = {
-  id: PuzzleId
-  fen: FEN
-  i_cursor: number
-  puzzle: Puzzle
-  last_move: Move
-  solution: string
-}
-
-type PersistedState = {
-  selected_puzzle: SelectedPuzzleInfo | undefined
-}
-
 function Home() {
 
-  let [api, { set_program, set_selected_puzzle_id, run_on_puzzle_set }] = useApi()
-
-  const [state, set_state] = createStore<State>({
-    program: '',
-    selected_puzzle: undefined,
-  })
-
-  const [persisted_state, set_persisted_state] = makePersisted(createStore<PersistedState>({
-    selected_puzzle: undefined
-  }), { name: 'morchess5.v1' })
-
-  function load_state() {
-    set_state('selected_puzzle', persisted_state.selected_puzzle)
-  }
-  function save_state() {
-    set_persisted_state('selected_puzzle', state.selected_puzzle)
-  }
-
-  const run_on_one_puzzle = () => {
-    if (state.selected_puzzle === undefined) {
-      return
-    }
-    set_selected_puzzle_id(state.selected_puzzle.id)
-  }
-
-  const api_Queries = createMemo<ApiSuccess | undefined>(() => {
-    let res = api.queries
-
-    if (res !== undefined && is_api_error(res)) {
-      return undefined
-    }
-    return res
-  })
-  createEffect(() => {
-    console.log(api_Queries())
-  })
-
-  const api_Error = createMemo<ApiError | undefined>(() => {
-    let res = api.queries
-
-    console.log(api.queries)
-    if (res !== undefined && is_api_error(res)) {
-      return res
-    }
-  })
-
-
-
-  const history = createMemo(() => {
-    let qq = api_Queries()
-
-    if (!qq) {
-      return []
-    }
-
-    let { moves } = qq
-
-    let res = []
-
-    let pos = fen_pos(fen())
-
-    for (let move of moves) {
-      let uci = move.join('')
-
-      let san = makeSan(pos, parseUci(uci)!)
-      res.push(san)
-    }
-
-    return res
-  })
-
-
-  const fen = createMemo(() => {
-    let qq = api_Queries()
-
-    if (!qq) {
-      return EMPTY_FEN
-    }
-
-    let { pieces } = qq
-
-
-    let pos = fen_pos(EMPTY_FEN)
-
-    for (let p_str of pieces) {
-
-      let [square, role, color] = p_str
-
-      let piece: Piece = { color, role } as Piece
-      pos.board.set(parseSquare(square)!, piece)
-    }
-    
-    return makeFen(pos.toSetup())
-  })
-
-  const shapes = createMemo(() => {
-    let res: DrawShape[] = []
-
-    let qq = api_Queries()
-
-    if (!qq) {
-      return []
-    }
-
-    let { green } = qq
-
-    let ss = green
-    if (ss) {
-      for (let s of ss) {
-        if (is_key(s)) {
-          res.push({ orig: s, brush: 'green'})
-        }
-      }
-    }
-
-    let { red } = qq
-
-    if (red) {
-      for (let s of red) {
-        if (is_key(s)) {
-          res.push({ orig: s, brush: 'red'})
-        }
-      }
-    }
-
-    return res
-  })
-
-
-  const selected_puzzle = createMemo(() => {
-    if (api.list !== undefined) {
-      load_state()
-      if (state.selected_puzzle === undefined || !api.list.find(_ => _.id === state.selected_puzzle!.id)) {
-        if (api.list.length === 0) {
-          return undefined
-        }
-        let puzzle = api.list[0]
-        set_state('selected_puzzle', {
-          id: puzzle.id,
-          puzzle: puzzle,
-          i_cursor: 0,
-          fen: puzzle.move_fens[0],
-          last_move: parseUci(puzzle.moves.split(' ')[0]),
-          solution: puzzle.sans.join(' ')
-        })
-        save_state()
-      }
-      run_on_one_puzzle()
-    }
-    return api.list?.find(_ => _.id === state.selected_puzzle?.id)
-  })
-
-
-  const on_puzzle_selected = (puzzle: Puzzle) => {
-    set_state('selected_puzzle', {
-      id: puzzle.id,
-      puzzle: puzzle,
-      i_cursor: 0,
-      fen: puzzle.move_fens[0],
-      last_move: parseUci(puzzle.moves.split(' ')[0]),
-      solution: puzzle.sans.join(' ')
-    })
-    save_state()
-    run_on_one_puzzle()
-  }
+  let [, { api_actions: { set_program, run_on_puzzle_set }, home_actions: { run_on_one_puzzle }}] = useMor()
 
 
   const on_program_changed = (text: string) => {
@@ -221,33 +30,25 @@ function Home() {
   }
 
 
+  const [{home}] = useMor()
 
   return (<>
     <div class='flex flex-row h-screen bg-slate-500'>
       <div class='relative flex-2 editor-wrap overflow-hidden'>
-        <Editor text={state.program} on_save_text={on_program_changed} on_execute_command={on_execute_command}/>
-        <Show when={api_Error()}>{error => 
-          <div class='fade-in absolute rounded-sm p-2 bottom-0 right-0 text-amber-50 bg-red-500'>{error().error}</div>
+        <Editor text={home.HomeStead.program} on_save_text={on_program_changed} on_execute_command={on_execute_command}/>
+        <Show when={home.Queries.error}>{error => 
+          <div class='absolute rounded-sm p-2 bottom-0 right-0 text-amber-50 bg-red-500'>{error().error}</div>
           }</Show>
       </div>
       <div class='flex-1 moves-wrap'>
-
-        <ErrorBoundary fallback={(error) => <>
-          {error.message}
-        </>}>
-          <Suspense fallback={<>
-            <div class='py-5 text-center text-lime-500'>Loading Puzzle list...</div>
-          </>}>
-            <PuzzleList list={api.list} selected={selected_puzzle()?.id} on_puzzle_selected={on_puzzle_selected} />
-          </Suspense>
-        </ErrorBoundary>
+        <ComplicatedCategorySelectorView/>
       </div>
       <div class='flex flex-col flex-1'>
         <div class='flex-1 moves-wrap'>
-          <Moves history={history()}/>
+          <Moves history={home.Queries.history}/>
         </div>
         <div class='pb-6 board-wrap'>
-          <Chessboard fen={fen()} shapes={shapes()} />
+          <Chessboard fen={home.Queries.fen} shapes={home.Queries.shapes} />
         </div>
       </div>
     </div>
@@ -256,15 +57,6 @@ function Home() {
 
 
 export default App
-
-const Square_Names: Key[] = []
-for (let sq of SquareSet.full()) {
-  Square_Names.push(square(sq) as Key)
-}
-
-const is_key = (a: string): a is Key => {
-  return Square_Names.indexOf(a as Key) !== -1
-}
 
 
 function Moves(props: { history: string[] }) {
@@ -283,6 +75,62 @@ function Moves(props: { history: string[] }) {
         }
         </For>
       </div>
+    </div>
+  </>)
+}
+
+
+
+function ComplicatedCategorySelectorView() {
+
+  const [{ home }, { api_actions: { run_on_puzzle_set }, home_actions: { on_puzzle_selected, set_category_filter, set_category }}] = useMor()
+
+  const on_category_change = (e: InputEvent) => {
+    let value = (e.target as HTMLInputElement).value
+
+    set_category(value)
+  }
+
+  const on_filter_change = (e: InputEvent) => {
+    let value = (e.target as HTMLInputElement).value
+
+    switch (value) {
+      case "fp": {
+        set_category_filter(ListCategoryFilter.Fp)
+      } break
+      case "tp": {
+        set_category_filter(ListCategoryFilter.Tp)
+      } break
+      default: {
+        set_category_filter(ListCategoryFilter.N)
+      }
+    }
+
+  }
+
+  createEffect(() => {
+    console.log(home.HomeStead.filter)
+  })
+  return (<>
+    <div class='flex flex-col'>
+      <button onClick={run_on_puzzle_set} class="my-2 px-4 py-1 font-semibold text-white bg-cyan-600 rounded-sm shadow-md hover:bg-cyan-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-75 cursor-pointer">
+        Run a Sweep
+      </button>
+
+      <select onInput={on_category_change} title='category' class='text-sm p-2 flex bg-emerald-100'>
+        <For each={home.HomeStead.categories} fallback={
+          <option>Run a Sweep to show categories.</option>
+        }>{category =>
+          <option value={category}>{category}</option>
+          }</For>
+      </select>
+      <PuzzleList list={home.HomeStead.list} selected={home.HomeStead.selected_puzzle?.id} on_puzzle_selected={on_puzzle_selected} />
+
+      <select onInput={on_filter_change} title='filter' class='text-md p-1 flex bg-amber-400'>
+        <option selected={home.HomeStead.filter === ListCategoryFilter.Tp} value="tp">True Positive</option>
+        <option selected={home.HomeStead.filter === ListCategoryFilter.Fp} value="fp">False Positive</option>
+        <option selected={home.HomeStead.filter === ListCategoryFilter.N}value="negative">Negative</option>
+      </select>
     </div>
   </>)
 }

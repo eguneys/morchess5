@@ -49,11 +49,13 @@ export function PuzzleList(props: { list?: Puzzle[], selected?: PuzzleId, on_puz
 
 
   return (<>
-  <div class='flex flex-col overflow-y-scroll max-h-50'>
-          <For each={props.list}>{(p, i) =>
-              <PuzzleItem n={i() + 1} selected={props.selected === p.id} puzzle={p} on_click={() => props.on_puzzle_selected(p)} />
-          }</For>
-      </div>
+    <div class='flex flex-col overflow-y-scroll h-50'>
+      <For each={props.list} fallback={<>
+        <div class='self-center p-5'>No puzzles :)</div>
+      </>}>{(p, i) =>
+        <PuzzleItem n={i() + 1} selected={props.selected === p.id} puzzle={p} on_click={() => props.on_puzzle_selected(p)} />
+        }</For>
+    </div>
   </>)
 }
 
