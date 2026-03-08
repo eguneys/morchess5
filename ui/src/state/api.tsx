@@ -44,7 +44,7 @@ export function create_api(mor_store: MorStore) {
         if (!fetch_puzzle_set_stats()) {
             return undefined
         }
-        let res = await $api_agent.puzzle_stats(untrack(() => state.program))
+        let res = await $api_agent.puzzle_stats(untrack(() => strip_comments(state.program)))
 
         if (is_api_error(res)) {
             return res
@@ -81,7 +81,7 @@ export function create_api(mor_store: MorStore) {
         if (!program || !id) {
             return { error: 'not initialized' }
         }
-        return $api_agent.prolog_code(state.program, state.selected_puzzle_id)
+        return $api_agent.prolog_code(strip_comments(state.program), state.selected_puzzle_id)
     })
 
     const actions = {
@@ -116,4 +116,10 @@ export function create_api(mor_store: MorStore) {
     const store: ApiStore = [state2, actions]
 
     return store
+}
+
+
+const strip_comments = (program: string) => {
+    program = program.replaceAll(/%.*\n/g, '')
+    return program
 }
