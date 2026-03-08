@@ -1,6 +1,6 @@
 import { Chessboard } from "./components/Chessboard"
 import Editor from "./components/Editor"
-import { createMemo, For, onMount, Show } from "solid-js"
+import { createMemo, For, onCleanup, onMount, Show } from "solid-js"
 import { PuzzleList } from "./components/PuzzleList"
 import { MorProvider, useMor } from "./state"
 import { ListCategoryFilter } from "./state/Home"
@@ -89,7 +89,7 @@ function Moves(props: { history: string[], title: string }) {
 
 function ComplicatedCategorySelectorView() {
 
-  const [{ home }, { api_actions: { run_on_puzzle_set }, home_actions: { on_puzzle_selected, set_category_filter, set_category }}] = useMor()
+  const [{ home }, { api_actions: { run_on_puzzle_set }, home_actions: { up_category, down_category, on_puzzle_selected, set_category_filter, set_category }}] = useMor()
 
   const on_category_change = (e: InputEvent) => {
     let value = (e.target as HTMLInputElement).value
@@ -136,18 +136,39 @@ function ComplicatedCategorySelectorView() {
     return Math.round((Fp.length / (Tp.length + Fp.length)) * 100)
   })
 
+  const on_keydown = (e: KeyboardEvent) => {
+    switch (e.key) {
+      case 'PageDown':
+        down_category()
+        break
+      case 'PageUp':
+        up_category()
+        break
+      default:
+        return
+    }
+    e.preventDefault()
+  }
+
+  document.addEventListener('keydown', on_keydown)
+  onCleanup(() => {
+    document.removeEventListener('keydown', on_keydown)
+  })
+
+
+
   return (<>
     <div class='flex flex-col'>
       <button onClick={run_on_puzzle_set} class="my-2 px-4 py-1 font-semibold text-white bg-cyan-600 rounded-sm shadow-md hover:bg-cyan-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-75 cursor-pointer">
         Run a Sweep
       </button>
 
-      <div class='border-b border-slate-500'>
+      <div class='flex flex-col border-b border-slate-500'>
       <select onInput={on_category_change} title='category' class='text-sm p-2 flex bg-emerald-100'>
         <For each={home.HomeStead.categories} fallback={
           <option>Run a Sweep to show categories.</option>
         }>{category =>
-          <option value={category}>{category}</option>
+          <option  selected={home.HomeStead.selected_category === category}  value={category}>{category}</option>
           }</For>
       </select>
       </div>

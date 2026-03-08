@@ -19,6 +19,8 @@ export type Actions = {
     run_on_one_puzzle: () => void
     set_category_filter: (filter: ListCategoryFilter) => void
     set_category: (category: PuzzleCategory) => void
+    up_category: () => void
+    down_category: () => void
 }
 
 export type Home = [State, Actions]
@@ -126,6 +128,15 @@ export function createHomeStead(mor_store: MorStore): [HomeStead, Actions] {
         run_on_one_puzzle()
     }
 
+
+    const select_first_puzzle = () => {
+        let l = list()
+        if (!l) {
+            return
+        }
+        on_puzzle_selected(l[0])
+    }
+
     const Categories = createMemo(() => {
         let api = get_api()
 
@@ -141,8 +152,12 @@ export function createHomeStead(mor_store: MorStore): [HomeStead, Actions] {
             return undefined
         }
 
-        return api.puzzle_stats.categories[pstate.list_filter.category]
+        return api.puzzle_stats.categories
     })
+
+    const SelectedCategory = createMemo(() => pstate.list_filter!.category)
+
+    const SelectedTpFpN = createMemo(() => Categories()?.[SelectedCategory()])
 
     const list_filter = createMemo(() => {
 
@@ -173,7 +188,7 @@ export function createHomeStead(mor_store: MorStore): [HomeStead, Actions] {
             return pstate.list_filter?.category
         },
         get TpFpTn() {
-            return Categories()
+            return SelectedTpFpN()
         },
         get categories() {
             let stats = get_api().puzzle_stats
@@ -202,6 +217,15 @@ export function createHomeStead(mor_store: MorStore): [HomeStead, Actions] {
         }
     }
 
+    const set_category = (category: PuzzleCategory) => {
+        if (pstate.list_filter === undefined) {
+            set_pstate('list_filter', { category, filter: ListCategoryFilter.Fp })
+        } else {
+            set_pstate('list_filter', 'category', category)
+        }
+        select_first_puzzle()
+    }
+
     let actions: Actions = {
         on_puzzle_selected,
         run_on_one_puzzle,
@@ -212,11 +236,39 @@ export function createHomeStead(mor_store: MorStore): [HomeStead, Actions] {
             set_pstate('list_filter', 'filter', filter)
         },
         set_category(category: PuzzleCategory) {
+           set_category(category) 
+        },
+        up_category() {
             if (pstate.list_filter === undefined) {
-                set_pstate('list_filter', { category, filter: ListCategoryFilter.Fp })
-            } else {
-                set_pstate('list_filter', 'category', category)
+                return
             }
+
+            let cc = Categories()
+            if (!cc) {
+                return
+            }
+
+            let cc_keys = Object.keys(cc)
+            let i = cc_keys.indexOf(SelectedCategory())
+
+
+            set_category(cc_keys[(i + 1) % cc_keys.length])
+        },
+        down_category() {
+            if (pstate.list_filter === undefined) {
+                return
+            }
+
+            let cc = Categories()
+            if (!cc) {
+                return
+            }
+
+            let cc_keys = Object.keys(cc)
+            let i = cc_keys.indexOf(SelectedCategory())
+
+
+            set_category(cc_keys[(i - 1 + cc_keys.length) % cc_keys.length])
         }
     }
 

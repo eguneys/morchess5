@@ -43,6 +43,7 @@ type EditorActions = {
     normal_mode_join_lines(): void
     normal_mode_goto_beginning_of_line(): void
     normal_mode_delete_delete_line(): void
+    normal_mode_yank_yank_line(): void
     normal_mode_yank_text(): void
     normal_mode_change_change_line(): void
     normal_mode_insert_wall_of_text(res: string): void
@@ -93,11 +94,11 @@ export default function Editor(props: { text: string, on_save_text: (_: string) 
     const on_cursor_change = () => {
 
         let _30 = nbLines()
-        if (state.cursor_line < state.camera_y + 3) {
-            scroll_camera_y(state.cursor_line - 3)
+        if (state.cursor_line < state.camera_y + 7) {
+            scroll_camera_y(state.cursor_line - 7)
         } else
-            if (state.cursor_line > (state.camera_y + _30 - 3)) {
-                scroll_camera_y(state.cursor_line - _30 + 3)
+            if (state.cursor_line > (state.camera_y + _30 - 7)) {
+                scroll_camera_y(state.cursor_line - _30 + 7)
             }
     }
 
@@ -332,6 +333,15 @@ export default function Editor(props: { text: string, on_save_text: (_: string) 
             }
             set_state('cursor_char', i)
         },
+        normal_mode_yank_yank_line() {
+
+            if (state.motion_cmd === 'none') {
+                set_state('motion_cmd', 'yank')
+            } else if (state.motion_cmd === 'yank') {
+                set_state('yanked_line', state.lines[state.cursor_line])
+                set_state('motion_cmd', 'none')
+            }
+        },
         normal_mode_delete_delete_line() {
 
             if (state.motion_cmd === 'none') {
@@ -396,7 +406,7 @@ export default function Editor(props: { text: string, on_save_text: (_: string) 
 
 
     return (<>
-    <div ref={$element} class='editor h-full w-full flex flex-col space-mono-regular text-sm font-bold bg-zinc-700 text-amber-50'>
+    <div ref={$element} class='editor overflow-hidden h-full w-full flex flex-col space-mono-regular text-sm font-bold bg-zinc-700 text-amber-50'>
             <div class='area whitespace-pre flex-1 overflow-hidden'>
                 <For each={state.lines}>{(line, index) =>
                     <Show when={index() >= state.camera_y}>
@@ -499,6 +509,9 @@ function KeyBindings(state: EditorState, actions: EditorActions) {
                 break
             case 'x':
                 actions.normal_mode_delete_char()
+                break
+            case 'y':
+                actions.normal_mode_yank_yank_line()
                 break
             case 'd':
                 actions.normal_mode_delete_delete_line()
