@@ -15,6 +15,9 @@ importers:
       '@lichess-org/chessground':
         specifier: ^10.0.2
         version: 10.0.2
+      '@solid-primitives/memo':
+        specifier: ^1.4.5
+        version: 1.4.5(solid-js@1.9.11)
       '@solid-primitives/storage':
         specifier: ^4.3.4
         version: 4.3.4(solid-js@1.9.11)
@@ -41,7 +44,7 @@ importers:
         specifier: ~5.9.3
         version: 5.9.3
       vite:
-        specifier: 8.0.0-beta.16
+        specifier: ^8.0.0-beta.13
         version: 8.0.0-beta.16(@types/node@24.11.0)(jiti@2.6.1)
       vite-plugin-solid:
         specifier: ^2.11.10
@@ -247,6 +250,16 @@ packages:
 
   '@rolldown/pluginutils@1.0.0-rc.6':
     resolution: {integrity: sha512-Y0+JT8Mi1mmW08K6HieG315XNRu4L0rkfCpA364HtytjgiqYnMYRdFPcxRl+BQQqNXzecL2S9nii+RUpO93XIA==}
+
+  '@solid-primitives/memo@1.4.5':
+    resolution: {integrity: sha512-dMfFShNsyX5virETyDv/Uoy2HP+PL4k8cUTTLb2r4TfoqJb010KIaOuURqp/Qbdznp4ZkDuP57b28d45kaOueQ==}
+    peerDependencies:
+      solid-js: ^1.6.12
+
+  '@solid-primitives/scheduled@1.5.3':
+    resolution: {integrity: sha512-oNwLE6E6lxJAWrc8QXuwM0k2oU1BnANnkChwMw82aK1j3+mWGJkG1IFe5gCwbV+afYmjI76t9JJV3md/8tLw+g==}
+    peerDependencies:
+      solid-js: ^1.6.12
 
   '@solid-primitives/storage@4.3.4':
     resolution: {integrity: sha512-GSxPAIuyxhJWOcv7n10iv3aid5oHN3KUgyA9IV0GYWlPpgyGs43aS9E85b0VXDLoH+D4ThNK8+2WEJ8B/S6Ccg==}
@@ -915,6 +928,16 @@ snapshots:
     optional: true
 
   '@rolldown/pluginutils@1.0.0-rc.6': {}
+
+  '@solid-primitives/memo@1.4.5(solid-js@1.9.11)':
+    dependencies:
+      '@solid-primitives/scheduled': 1.5.3(solid-js@1.9.11)
+      '@solid-primitives/utils': 6.4.0(solid-js@1.9.11)
+      solid-js: 1.9.11
+
+  '@solid-primitives/scheduled@1.5.3(solid-js@1.9.11)':
+    dependencies:
+      solid-js: 1.9.11
 
   '@solid-primitives/storage@4.3.4(solid-js@1.9.11)':
     dependencies:

@@ -5,6 +5,7 @@ export type PuzzleCategory = string
 
 export type ApiCodePuzzleStats = {
     categories: Record<PuzzleCategory, CategoryStat>
+    payload: ApiPuzzle[]
 }
 
 export type CategoryStat = {
@@ -16,7 +17,7 @@ export type CategoryStat = {
 export type ApiPuzzle = {
     id: string
     fen: string
-    solution: string
+    moves: string
     themes: string
 }
 
@@ -34,7 +35,7 @@ export type Puzzle = {
 
 export function convert_api_puzzle(p: ApiPuzzle) {
 
-    let {id, fen, solution, themes} = p
+    let {id, fen, moves, themes} = p
 
     let sans: string[] = []
 
@@ -44,12 +45,12 @@ export function convert_api_puzzle(p: ApiPuzzle) {
     let initial = true
 
     return {
-        id, link, fen, moves: solution, tags: themes,
+        id, link, fen, moves, tags: themes,
         get move_fens() {
             let move_fens: string[] = []
 
             let pos = fen_pos(fen)
-            solution.split(' ').forEach((uci, i) => {
+            moves.split(' ').forEach((uci, i) => {
                 let move = parseUci(uci)!
                 if (initial)
                     if (i > 0) sans.push(makeSan(pos, move))

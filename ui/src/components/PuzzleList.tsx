@@ -1,5 +1,5 @@
 import { createEffect, For, onCleanup } from "solid-js"
-import type { Puzzle } from "../worker/fixture"
+import type { Puzzle } from "../state/puzzle_fixture"
 
 export type PuzzleId = string
 

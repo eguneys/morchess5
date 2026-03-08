@@ -1,4 +1,4 @@
-:- module(user_land_entry, []).
+:- module(user_land_entry, [ green/1, red/1, history/2 ]).
 
 :- use_module(chess/fen).
 :- use_module(chess/piece_at).

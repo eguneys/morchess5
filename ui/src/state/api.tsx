@@ -5,6 +5,7 @@ import { createAsync } from '@solidjs/router'
 import { convert_api_puzzle, type ApiCodePuzzleStats, type ApiPuzzle, type Puzzle } from './puzzle_fixture'
 import type { PuzzleId } from '../components/PuzzleList'
 import type { MorStore } from '.'
+import { createWritableMemo } from '@solid-primitives/memo'
 
 export type ApiState = {
     queries?: ApiQueries
@@ -35,7 +36,6 @@ export function create_api(mor_store: MorStore) {
         selected_puzzle_id: ''
     })
 
-
     const [fetch_puzzle_set_stats, set_fetch_puzzle_set_stats] = createSignal<boolean>(false, { equals: false })
 
 
@@ -48,15 +48,23 @@ export function create_api(mor_store: MorStore) {
 
         mor_store[1].home_actions.set_category(Object.keys(res.categories)[0])
 
+        let puzzles_payload = res.payload.map(convert_api_puzzle)
+        let add = puzzles_payload.filter(_ => !puzzle_List()?.some(l => l.id === _.id))
+        set_puzzle_List(_ => [...(_ ?? []), ...add])
+
         return res
     })
-
-
 
     
     const get_PuzzleList = createAsync<Pagination<ApiPuzzle>>(async () => {
         return $api_agent.puzzle_list()
     })
+
+    const [puzzle_List, set_puzzle_List] = createWritableMemo(() => {
+        return get_PuzzleList()?.items.map(convert_api_puzzle)
+    })
+
+
 
 
 
@@ -88,8 +96,8 @@ export function create_api(mor_store: MorStore) {
         get queries(): ApiQueries | undefined {
             return get_Queries()
         },
-        get list(): Puzzle[] | undefined {
-            return get_PuzzleList()?.items.map(convert_api_puzzle)
+        get list() {
+            return puzzle_List()
         },
         get puzzle_stats(): ApiCodePuzzleStats | undefined {
             return get_PuzzleStats()

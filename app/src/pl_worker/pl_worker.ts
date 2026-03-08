@@ -51,7 +51,7 @@ export function validate(code: string) {
 
   let user_defined_functions = []
   for (let line of lines) {
-    for (let m of line.matchAll(/^history\((c_[A-Z][A-Za-z_0-9]*),/g)) {
+    for (let m of line.matchAll(/^tactic_detector\((c_[A-Z][A-Za-z_0-9]*),/g)) {
       categories.push(m[1])
     }
 
@@ -75,6 +75,9 @@ export function validate(code: string) {
   for (let line of lines) {
 
     for (let m of line.matchAll(/([A-Za-z_][A-Za-z_0-9]*)/g)) {
+      if (m[1] === 'tactic_detector') {
+        continue
+      }
       if (categories.includes(m[1])) {
         continue
       }
@@ -97,6 +100,12 @@ export function validate(code: string) {
   let replace_all = [...builtin_functions]
   for (let r of replace_all) {
     code = code.replaceAll(r, `user_land_entry:${r}`)
+  }
+
+  let categorize_replace = ['tactic_detector']
+
+  for (let r of categorize_replace) {
+    code = code.replaceAll(r, `user_land_categorizer:${r}`)
   }
 
   return code
@@ -162,7 +171,7 @@ export class PrologClient {
       return Promise.resolve({error: "Invalid Prolog Code."})
     }
 
-    let rows = puzzles.map(_ => [_.id, _.fen, _.solution])
+    let rows = puzzles.map(_ => [_.id, _.fen2, _.solution])
 
     const id = this.nextRequestId++;
     const payload = JSON.stringify({ id, code, rows });

@@ -1,7 +1,13 @@
-:- module(user_land_categorizer, [ run_categorization_stats/2, puzzle_category/2 ]).
+:- module(user_land_categorizer, [ run_categorization_stats/2, tactic_detector/2 ]).
 
 :- use_module(library(assoc)).
 :- use_module(chess/fen).
+
+
+:- use_module(chess/piece_at).
+:- use_module(chess/types).
+
+:- use_module(user_land_entry).
 
 :- dynamic(tactic_detector/2).
 
@@ -161,7 +167,27 @@ update_stats(Type, Cat, Id, Stats0, Stats) :-
     update_cat(Type, Id, CatStats0, CatStats),
     Stats = Stats0.put(Cat, CatStats).
 
-candidate_bishop_forks(Move) :- Move = [move(e2, e4)].
-candidate_e2e5(Move) :- Move = [move(e2, e5)].
+%candidate_bishop_forks(Move) :- Move = [move(e2, e4)].
+%candidate_e2e5(Move) :- Move = [move(e2, e5)].
+tactic_detector(bishop_forks, candidate_Hello).
 
-tactic_detector(bishop_forks, candidate_bishop_forks).
+candidate_Hello([Move]) :- bishop_fork(step(root, Move, _), _, _, _, _).
+
+
+bishop_fork(step(W, Move, W1), BishopSq, RookSq, KingSq, To) :- 
+  bishop_fork_candidate(W, BishopSq, To, KingSq, RookSq), 
+  Move = move(BishopSq, To), 
+  hyp_world(W, Move, W1), 
+  attacks(W1, bishop, To, KingSq), 
+  attacks(W1, bishop, To, RookSq). 
+ 
+ 
+bishop_fork_candidate(W, From, To, KingSq, RookSq) :- 
+  side_to_move(W, Color), 
+  piece_at(W, From, bishop, Color), 
+  opposite_color(Color, Opp), 
+  piece_at(W, KingSq, king, Opp), 
+  piece_at(W, RookSq, rook, Opp), 
+  bishop_attack(W, From, To), 
+  empty(W, To). 
+ 

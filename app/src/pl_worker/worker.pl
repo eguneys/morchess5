@@ -122,6 +122,8 @@ move_to_pair(move(A,B), [A,B]) :-
   ground(A),
   ground(B).
 
+
+
 safe_findall(Template, Goal, List) :-
   findall(Template,
       ( Goal,
@@ -130,6 +132,7 @@ safe_findall(Template, Goal, List) :-
       List).
 
 
+/*
 history_group_by_category(JSON) :-
     safe_findall(Category-Items, (
         user_land_entry:history(Category, XItems), 
@@ -147,3 +150,4 @@ convert_to_json(List, Dict) :-
 % Helper to ensure keys are atoms (required for dict keys)
 prepare_pair(Category-Items, CatAtom-Items) :-
     atom_string(CatAtom, Category).
+*/
