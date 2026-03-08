@@ -37,7 +37,7 @@ function Home() {
 
   return (<>
     <div class='flex flex-row h-screen bg-slate-500'>
-      <div class='relative flex-2 editor-wrap overflow-hidden border-r border-slate-500'>
+      <div class='relative flex-2 editor-wrap border-r border-slate-500'>
         <Editor text={home.HomeStead.program} on_save_text={on_program_changed} on_execute_command={on_execute_command}/>
         <Show when={home.Queries.error}>{error => 
           <div class='absolute rounded-sm p-2 bottom-0 right-0 text-amber-50 bg-red-500'>{error().error}</div>

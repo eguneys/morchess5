@@ -1,5 +1,5 @@
 import { makePersisted } from "@solid-primitives/storage"
-import { batch, createMemo, For, onCleanup, onMount, Show } from "solid-js"
+import { batch, createMemo, createSignal, For, onCleanup, onMount, Show } from "solid-js"
 import { createStore } from "solid-js/store"
 
 type EditorMode = 'normal' | 'edit' | 'command' 
@@ -15,6 +15,7 @@ type EditorState = {
     cursor_line: number
     cursor_char: number
     input_command: string
+    camera_y: number
 }
 
 type EditorActions = {
@@ -57,7 +58,8 @@ export default function Editor(props: { text: string, on_save_text: (_: string) 
         lines: props.text.split('\n'),
         cursor_line: 0,
         cursor_char: 0,
-        input_command: ''
+        input_command: '',
+        camera_y: 0
     })
 
     const [persisted_state, set_persisted_state] = makePersisted(createStore({
@@ -86,6 +88,74 @@ export default function Editor(props: { text: string, on_save_text: (_: string) 
         }
         props.on_execute_command(command)
     }
+
+
+    const on_cursor_change = () => {
+
+        let _30 = nbLines()
+        if (state.cursor_line < state.camera_y + 3) {
+            scroll_camera_y(state.cursor_line - 3)
+        } else
+            if (state.cursor_line > (state.camera_y + _30 - 3)) {
+                scroll_camera_y(state.cursor_line - _30 + 3)
+            }
+    }
+
+    const scroll_camera_y = (delta: number) => {
+        let tmp = state.camera_y
+        set_state('camera_y', Math.min(Math.max(0, delta), state.lines.length))
+        let now = state.camera_y
+
+        return tmp !== now
+    }
+
+    let $element!: HTMLDivElement
+    const [listen_to_resize, set_listen_to_resize] =  createSignal(void 0, { equals: false })
+
+    onMount(() => {
+
+        let o = new ResizeObserver(set_listen_to_resize)
+
+        o.observe($element)
+
+        onCleanup(() => {
+
+            o.disconnect()
+        })
+    })
+
+    const nbLines = createMemo(() => {
+
+        listen_to_resize()
+
+        if (!$element) {
+            return 0
+        }
+
+        const elementHeight = $element.offsetHeight;
+
+
+        const computedStyle = window.getComputedStyle($element);
+
+        let iLineHeight = 0
+
+        let lineHeight = computedStyle.lineHeight;
+
+        // Convert line-height to a number (pixels) if it's not already
+        if (lineHeight.includes('px')) {
+            iLineHeight = parseFloat(lineHeight);
+        } else {
+            // If it's unitless or 'normal', you need a more robust way to determine pixel height,
+            // typically by creating a dummy element or using a known multiplier (e.g., 1.2 to 1.6 times font-size).
+            const fontSize = parseFloat(computedStyle.fontSize);
+            iLineHeight = fontSize * 1.2; // A common default multiplier
+        }
+
+
+        const numberOfLines = Math.floor(elementHeight / iLineHeight)
+        
+        return numberOfLines
+    })
 
     let actions: EditorActions = {
         set_mode(mode: EditorMode) {
@@ -179,6 +249,7 @@ export default function Editor(props: { text: string, on_save_text: (_: string) 
                 if (state.cursor_char > line.length) {
                     set_state('cursor_char', line.length)
                 }
+                on_cursor_change()
             })
         },
         normal_mode_motion_down() {
@@ -191,6 +262,7 @@ export default function Editor(props: { text: string, on_save_text: (_: string) 
                 if (state.cursor_char > line.length) {
                     set_state('cursor_char', line.length)
                 }
+                on_cursor_change()
             })
         },
         normal_mode_motion_left() {
@@ -322,27 +394,30 @@ export default function Editor(props: { text: string, on_save_text: (_: string) 
         })
     })
 
-    return (<>
-    <div class='editor h-full w-full flex flex-col space-mono-regular text-sm font-bold bg-zinc-700 text-amber-50'>
-        <div class='area whitespace-pre flex-1'>
-            <For each={state.lines}>{ (line , index) => 
-            <Show when={index() === state.cursor_line} fallback={
-               <div class='line'>{line} </div>
-            }>
-                        <div class='line'>
-                            <span>{line.slice(0, state.cursor_char)}</span>
-                            <span class='relative'>
-                                <Cursor state={state} char={line[state.cursor_char]} />
-                            </span>
-                            <Show when={state.cursor_char < state.lines[state.cursor_line].length}>
-                                <span>{line.slice(state.cursor_char + 1)} </span>
-                            </Show>
 
-                       </div>
-            </Show>
-            }</For>
-        </div>
-        <div class={`status px-2 py-1 ${state.mode === 'normal' ? 'bg-zinc-800' : 'text-gray-900 bg-amber-600'}`}>
+    return (<>
+    <div ref={$element} class='editor h-full w-full flex flex-col space-mono-regular text-sm font-bold bg-zinc-700 text-amber-50'>
+            <div class='area whitespace-pre flex-1 overflow-hidden'>
+                <For each={state.lines}>{(line, index) =>
+                    <Show when={index() >= state.camera_y}>
+                        <Show when={index() === state.cursor_line} fallback={
+                            <div class='line'>{line} </div>
+                        }>
+                            <div class='line'>
+                                <span>{line.slice(0, state.cursor_char)}</span>
+                                <span class='relative'>
+                                    <Cursor state={state} char={line[state.cursor_char]} />
+                                </span>
+                                <Show when={state.cursor_char < state.lines[state.cursor_line].length}>
+                                    <span>{line.slice(state.cursor_char + 1)} </span>
+                                </Show>
+
+                            </div>
+                        </Show>
+                    </Show>
+                }</For>
+            </div>
+            <div class={`status px-2 py-1 ${state.mode === 'normal' ? 'bg-zinc-800' : 'text-gray-900 bg-amber-600'}`}>
             {mode_text()}
             <Show when={state.mode==='command'}>
                 <span>{state.input_command}</span>
