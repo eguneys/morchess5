@@ -1,6 +1,6 @@
 import { Chessboard } from "./components/Chessboard"
 import Editor from "./components/Editor"
-import { For, Show } from "solid-js"
+import { createMemo, For, onMount, Show } from "solid-js"
 import { PuzzleList } from "./components/PuzzleList"
 import { MorProvider, useMor } from "./state"
 import { ListCategoryFilter } from "./state/Home"
@@ -29,6 +29,9 @@ function Home() {
     }
   }
 
+  onMount(() => {
+    run_on_puzzle_set()
+  })
 
   const [{home}] = useMor()
 
@@ -47,8 +50,11 @@ function Home() {
         <div class='flex-1 moves-wrap'>
           <Moves history={home.Queries.history}/>
         </div>
-        <div class='pb-6 board-wrap'>
+        <div class='board-wrap'>
           <Chessboard fen={home.Queries.fen} shapes={home.Queries.shapes} />
+        </div>
+        <div class='flex-1 moves-wrap'>
+          <Moves history={home.HomeStead.solution}/>
         </div>
       </div>
     </div>
@@ -62,8 +68,7 @@ export default App
 function Moves(props: { history: string[] }) {
   return (<>
     <div class='flex flex-col h-full'>
-      <h3 class='text-4xl font-bold text-center text-lime-200'>Moves</h3>
-      <div class='moves text-2xl bg-gray-700 p-2 flex-1'>
+      <div class='moves bg-gray-700 p-2 flex-1'>
         <For each={props.history}>{(item, i) =>
           <>
             <div class='py-0.5 px-2 m-0.5 bg-gray-600 rounded-sm text-lime-50 inline-block'>
@@ -108,6 +113,28 @@ function ComplicatedCategorySelectorView() {
 
   }
 
+
+  let C_percent = createMemo(() => {
+
+    let { TpFpTn } = home.HomeStead
+    if (TpFpTn === undefined) {
+      return '--'
+    }
+
+    let { tp: Tp, fp: Fp, n: Tn } = TpFpTn
+    return Math.round(((Tp.length + Fp.length) / Tn) * 100)
+  })
+  let Tp_percent = createMemo(() => {
+    let { TpFpTn } = home.HomeStead
+    if (TpFpTn === undefined) {
+      return '--'
+    }
+
+
+    let { tp: Tp, fp: Fp } = TpFpTn
+    return Math.round((Fp.length / (Tp.length + Fp.length)) * 100)
+  })
+
   return (<>
     <div class='flex flex-col'>
       <button onClick={run_on_puzzle_set} class="my-2 px-4 py-1 font-semibold text-white bg-cyan-600 rounded-sm shadow-md hover:bg-cyan-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-75 cursor-pointer">
@@ -123,11 +150,20 @@ function ComplicatedCategorySelectorView() {
       </select>
       <PuzzleList list={home.HomeStead.list} selected={home.HomeStead.selected_puzzle?.id} on_puzzle_selected={on_puzzle_selected} />
 
-      <select onInput={on_filter_change} title='filter' class='text-md p-1 flex bg-amber-400'>
+      <select onInput={on_filter_change} title='filter' class='text-md p-1 flex bg-zinc-200 text-gray-700'>
         <option selected={home.HomeStead.filter === ListCategoryFilter.Tp} value="tp">True Positive</option>
         <option selected={home.HomeStead.filter === ListCategoryFilter.Fp} value="fp">False Positive</option>
         <option selected={home.HomeStead.filter === ListCategoryFilter.N}value="negative">Negative</option>
       </select>
+      <div class='bg-slate-800'>
+        <Show when={home.HomeStead.TpFpTn}>{ TpFpTn =>
+        <>
+            <h3 class='text-pink-500 text-center'>{home.HomeStead.selected_category}</h3>
+            <div class='p-1 text-lime-50'>{`Coverage % ${C_percent()} Error %${Tp_percent()}`}</div>
+            <div class='p-1 text-lime-50'>{`Tp/Fp/N ${TpFpTn().tp.length}/${TpFpTn().fp.length}/${TpFpTn().n}`}</div>
+          </>
+        }</Show>
+      </div>
     </div>
   </>)
 }

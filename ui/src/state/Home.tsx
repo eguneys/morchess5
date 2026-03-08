@@ -7,6 +7,7 @@ import type { DrawShape } from "@lichess-org/chessground/draw"
 import { is_key, type SelectedPuzzleInfo } from "./chess"
 import type { Puzzle, PuzzleCategory } from "./puzzle_fixture"
 import type { MorStore } from "."
+import type { PuzzleId } from "../components/PuzzleList"
 
 export type State = {
     Queries: HomeQueries
@@ -35,12 +36,21 @@ export function create_home(store: MorStore): Home {
     return [state, actions]
 }
 
+type SAN = string
+
 type HomeStead = {
     program: string
     selected_puzzle: Puzzle | undefined
     list: Puzzle[] | undefined
     categories: PuzzleCategory[]
     filter: ListCategoryFilter | undefined
+    selected_category?: PuzzleCategory
+    solution: SAN[]
+    TpFpTn?: {
+        tp: PuzzleId[]
+        fp: PuzzleId[]
+        n: number
+    }
 }
 
 type PersistedHomeStead = {
@@ -117,6 +127,23 @@ export function createHomeStead(mor_store: MorStore): [HomeStead, Actions] {
         run_on_one_puzzle()
     }
 
+    const Categories = createMemo(() => {
+        let api = get_api()
+
+        if (!pstate.list_filter) {
+            return undefined
+        }
+
+        if (!api.puzzle_stats) {
+            return undefined
+        }
+
+        if (is_api_error(api.puzzle_stats)) {
+            return undefined
+        }
+
+        return api.puzzle_stats.categories[pstate.list_filter.category]
+    })
 
     const list_filter = createMemo(() => {
 
@@ -143,6 +170,12 @@ export function createHomeStead(mor_store: MorStore): [HomeStead, Actions] {
     const list = createMemo(() => get_api().list?.filter(_ => list_filter()?.includes(_.id) ?? true))
 
     let stead: HomeStead = {
+        get selected_category() {
+            return pstate.list_filter?.category
+        },
+        get TpFpTn() {
+            return Categories()
+        },
         get categories() {
             let stats = get_api().puzzle_stats
 
@@ -164,6 +197,9 @@ export function createHomeStead(mor_store: MorStore): [HomeStead, Actions] {
         },
         get filter() {
             return pstate.list_filter?.filter
+        },
+        get solution() {
+            return selected_puzzle()?.sans ?? []
         }
     }
 
@@ -191,7 +227,7 @@ export function createHomeStead(mor_store: MorStore): [HomeStead, Actions] {
 
 export type HomeQueries = {
     error?: ApiError
-    history: string[]
+    history: SAN[]
     fen: string
     shapes: DrawShape[]
 }
