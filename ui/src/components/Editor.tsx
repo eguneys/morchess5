@@ -1,10 +1,10 @@
 import { makePersisted } from "@solid-primitives/storage"
-import { batch, createEffect, createMemo, createSignal, For, onCleanup, onMount, Show } from "solid-js"
+import { batch, createMemo, createSignal, For, onCleanup, onMount, Show } from "solid-js"
 import { createStore } from "solid-js/store"
 
 type EditorMode = 'normal' | 'edit' | 'command' 
 
-type MotionCommand = 'none' | 'delete' | 'change' | 'yank'
+type MotionCommand = 'none' | 'delete' | 'change' | 'yank' | 'replace' | 'goto'
 
 type EditorState = {
     yanked_text: string
@@ -21,6 +21,7 @@ type EditorState = {
 }
 
 type EditorActions = {
+    on_escape(): void
     set_mode(mode: EditorMode): void
     in_command_execute_command(): void
     in_command_insert_char(char: string): void
@@ -29,6 +30,8 @@ type EditorActions = {
     in_edit_insert_char(char: string): void
     in_edit_end_mode_backup_cursor(): void
     in_edit_break_line(): void
+    normal_mode_undo(): void
+    normal_mode_redo(): void
     normal_mode_delete_char(): void
     normal_mode_change_end_of_line(): void
     normal_mode_motion_left(): void
@@ -38,6 +41,8 @@ type EditorActions = {
     normal_mode_motion_back_word(): void
     normal_mode_motion_back_word_whitespace(): void
     normal_mode_motion_forward_word(): void
+    normal_mode_motion_goto_end_of_line(): unknown
+    normal_mode_motion_goto_end_of_page(): void
     normal_mode_o_newline_set_in_edit_mode(): void
     normal_mode_o_newline_above_set_in_edit_mode(): void
     normal_mode_set_cursor_append_char(): void
@@ -53,9 +58,22 @@ type EditorActions = {
     normal_mode_end_visual_mode(): void
     normal_mode_begin_motion_capture(): void
     normal_mode_end_motion_capture(): void
+    normal_mode_replace_replace_char(char?: string): void
+    normal_mode_goto_goto_line(): void
+    normal_mode_page_up(): void
+    normal_mode_page_down(): void
+}
+
+type UndoState = {
+    lines: string[]
+    cursor_line: number
+    cursor_char: number
 }
 
 export default function Editor(props: { text: string, on_save_text: (_: string) => void, on_execute_command: (_: string) => void }) {
+
+    let undo_stack: UndoState[] = []
+    let redo_stack: UndoState[] = []
 
     const [state, set_state] = createStore<EditorState>({
         yanked_text: '',
@@ -216,8 +234,6 @@ export default function Editor(props: { text: string, on_save_text: (_: string) 
 
             half_lines_x_to_leftmost = box.x
             half_lines_x_to_leftmost_y = box.y
-
-
         }
 
         batch(() => {
@@ -234,7 +250,7 @@ export default function Editor(props: { text: string, on_save_text: (_: string) 
                 )
             }
 
-            if (full_lines_a < full_lines_b) {
+            if (full_lines_a <= full_lines_b) {
                 yanked_text += state.lines.slice(full_lines_a, full_lines_b + 1).join('\n')
                 set_state('lines', _ => _.toSpliced(full_lines_a, full_lines_b - full_lines_a + 1))
             }
@@ -246,6 +262,59 @@ export default function Editor(props: { text: string, on_save_text: (_: string) 
             set_state('visual_mode_rect', undefined)
         })
     }
+
+    function push_redo() {
+        let stack = {
+            lines: state.lines.slice(),
+            cursor_line: state.cursor_line,
+            cursor_char: state.cursor_char
+        }
+        redo_stack.push(stack)
+        if (redo_stack.length > 10) {
+            redo_stack = redo_stack.slice(-1)
+        }
+    }
+
+
+
+    function push_undo() {
+        let stack = {
+            lines: state.lines.slice(),
+            cursor_line: state.cursor_line,
+            cursor_char: state.cursor_char
+        }
+        undo_stack.push(stack)
+        if (undo_stack.length > 10) {
+            undo_stack = undo_stack.slice(-1)
+        }
+    }
+
+    function undo() {
+        let undo_state = undo_stack.pop()
+
+        if (undo_state) {
+        push_redo()
+            set_state('lines', undo_state.lines)
+            set_state('cursor_line', undo_state.cursor_line)
+            set_state('cursor_char', undo_state.cursor_char)
+
+            on_cursor_change()
+        }
+    }
+
+    function redo() {
+        let redo_state = redo_stack.pop()
+
+        if (redo_state) {
+            push_undo()
+            set_state('lines', redo_state.lines)
+            set_state('cursor_line', redo_state.cursor_line)
+            set_state('cursor_char', redo_state.cursor_char)
+
+            on_cursor_change()
+        }
+    }
+
 
     let actions: EditorActions = {
         set_mode(mode: EditorMode) {
@@ -271,6 +340,8 @@ export default function Editor(props: { text: string, on_save_text: (_: string) 
             })
         },
        in_edit_end_mode_backup_cursor() {
+
+
             if (state.cursor_char === 0) {
                 return
             }
@@ -292,7 +363,12 @@ export default function Editor(props: { text: string, on_save_text: (_: string) 
                 set_state('cursor_char', state.cursor_char + 1)
             })
         },
-
+        normal_mode_undo() {
+            undo()
+        },
+        normal_mode_redo() {
+            redo()
+        },
         normal_mode_begin_motion_capture() {
             set_state('motion_capture_begin', { x: state.cursor_char, y: state.cursor_line })
         },
@@ -312,6 +388,7 @@ export default function Editor(props: { text: string, on_save_text: (_: string) 
             set_state('visual_mode_rect', undefined)
         },
         normal_mode_delete_char() {
+            push_undo()
             let line = state.lines[state.cursor_line]
             let new_line = line.slice(0, state.cursor_char) + line.slice(state.cursor_char + 1)
             batch(() => {
@@ -320,12 +397,15 @@ export default function Editor(props: { text: string, on_save_text: (_: string) 
             })
         },
         normal_mode_set_cursor_append_char() {
+            push_undo()
             set_state('cursor_char', state.cursor_char + 1)
         },
         normal_mode_set_cursor_append_end_of_line() {
+            push_undo()
             set_state('cursor_char', state.lines[state.cursor_line].length)
         },
         normal_mode_o_newline_set_in_edit_mode() {
+            push_undo()
             batch(() => {
                 set_state('lines', _ => state.lines.toSpliced(state.cursor_line + 1, 0, ''))
                 set_state('cursor_line', state.cursor_line + 1)
@@ -333,6 +413,7 @@ export default function Editor(props: { text: string, on_save_text: (_: string) 
             })
         }, 
         normal_mode_o_newline_above_set_in_edit_mode() {
+            push_undo()
             batch(() => {
                 set_state('lines', _ => state.lines.toSpliced(state.cursor_line, 0, ''))
                 set_state('cursor_line', state.cursor_line)
@@ -340,6 +421,7 @@ export default function Editor(props: { text: string, on_save_text: (_: string) 
             })
         }, 
         normal_mode_change_end_of_line() {
+            push_undo()
             batch(() => {
                 let line_a = state.lines[state.cursor_line].slice(0, state.cursor_char)
                 set_state('lines', _ => state.lines.toSpliced(state.cursor_line, 1, line_a))
@@ -436,7 +518,14 @@ export default function Editor(props: { text: string, on_save_text: (_: string) 
             set_state('cursor_char', i)
             actions.normal_mode_end_motion_capture()
         },
+        normal_mode_motion_goto_end_of_line() {
+            actions.normal_mode_begin_motion_capture()
+            let line = state.lines[state.cursor_line]
+            set_state('cursor_char', Math.max(0, line.length - 1))
+            actions.normal_mode_end_motion_capture()
+        },
         normal_mode_join_lines() {
+            push_undo()
             batch(() => {
                 let line_ab = state.lines[state.cursor_line] + state.lines[state.cursor_line + 1]
                 set_state('lines', _ => state.lines.toSpliced(state.cursor_line, 2, line_ab))
@@ -467,6 +556,7 @@ export default function Editor(props: { text: string, on_save_text: (_: string) 
         },
         normal_mode_delete_delete_line() {
 
+            push_undo()
             if (state.motion_cmd === 'none') {
 
                 if (state.visual_mode_rect) {
@@ -482,6 +572,7 @@ export default function Editor(props: { text: string, on_save_text: (_: string) 
         },
         normal_mode_change_change_line() {
 
+            push_undo()
             if (state.motion_cmd === 'none') {
                 set_state('motion_cmd', 'change')
             } else if (state.motion_cmd === 'change') {
@@ -500,6 +591,7 @@ export default function Editor(props: { text: string, on_save_text: (_: string) 
             }
         },
         normal_mode_insert_wall_of_text(text: string) {
+            push_undo()
             let lines = text.split('\n')
             batch(() => {
 
@@ -517,6 +609,42 @@ export default function Editor(props: { text: string, on_save_text: (_: string) 
                 }
             })
 
+        },
+        normal_mode_replace_replace_char(char?: string) {
+            if (state.motion_cmd === 'none') {
+                set_state('motion_cmd', 'replace')
+            } else if (state.motion_cmd === 'replace') {
+                if (char !== undefined && char.length === 1) {
+                    let new_line = state.lines[state.cursor_line].slice(0, state.cursor_char) + char + state.lines[state.cursor_line].slice(state.cursor_char + 1)
+                    set_state('lines', state.cursor_line, new_line)
+                }
+                set_state('motion_cmd', 'none')
+            }
+        },
+        on_escape() {
+            set_state('mode', 'normal')
+            set_state('motion_cmd', 'none')
+        },
+        normal_mode_goto_goto_line() {
+            if (state.motion_cmd === 'none') {
+                set_state('motion_cmd', 'goto')
+            } else if (state.motion_cmd === 'goto') {
+                set_state('cursor_line', 0)
+                on_cursor_change()
+                set_state('motion_cmd', 'none')
+            }
+        },
+        normal_mode_motion_goto_end_of_page() {
+            set_state('cursor_line', state.lines.length - 1)
+            on_cursor_change()
+        },
+        normal_mode_page_up() {
+            set_state('cursor_line', Math.max(0, state.cursor_line - 11))
+            on_cursor_change()
+        },
+        normal_mode_page_down() {
+            set_state('cursor_line', Math.min(state.cursor_line + 11, state.lines.length - 1))
+            on_cursor_change()
         }
     }
     
@@ -663,7 +791,7 @@ function KeyBindings(state: EditorState, actions: EditorActions) {
         switch (e.key) {
             case 'Escape':
                 actions.in_edit_end_mode_backup_cursor()
-                actions.set_mode('normal')
+                actions.on_escape()
                 break
             case 'Backspace':
                 actions.in_edit_delete_char()
@@ -690,7 +818,23 @@ function KeyBindings(state: EditorState, actions: EditorActions) {
     const handle_in_normal_mode = (e: KeyboardEvent) => {
 
         let handled = true
+
+        if (state.motion_cmd === 'replace') {
+            actions.normal_mode_replace_replace_char(e.key)
+            return
+        }
+
         switch (e.key) {
+            case '$':
+                actions.normal_mode_motion_goto_end_of_line()
+                break
+            case 'g':  case 'G': 
+                if (e.shiftKey) {
+                    actions.normal_mode_motion_goto_end_of_page()
+                } else {
+                    actions.normal_mode_goto_goto_line()
+                }
+            break
             case 'v': 
                 if (e.ctrlKey) {
                     navigator.clipboard.readText().then(_ => {
@@ -711,6 +855,20 @@ function KeyBindings(state: EditorState, actions: EditorActions) {
             case 'i':
                 actions.set_mode('edit')
                 break
+            case 'u':
+                if (e.ctrlKey) {
+                    actions.normal_mode_page_up()
+                } else {
+                    actions.normal_mode_undo()
+                }
+                break
+            case 'r':
+                if (e.ctrlKey) {
+                    actions.normal_mode_redo()
+                } else {
+                    actions.normal_mode_replace_replace_char()
+                }
+                break
             case '_':
                 actions.normal_mode_goto_beginning_of_line()
                 break
@@ -721,7 +879,11 @@ function KeyBindings(state: EditorState, actions: EditorActions) {
                 actions.normal_mode_yank_yank_line()
                 break
             case 'd':
-                actions.normal_mode_delete_delete_line()
+                if (e.ctrlKey) {
+                    actions.normal_mode_page_down()
+                } else {
+                    actions.normal_mode_delete_delete_line()
+                }
                 break
             case 'p':
                 actions.normal_mode_yank_text()
