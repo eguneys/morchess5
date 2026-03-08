@@ -1,5 +1,5 @@
 import { makePersisted } from "@solid-primitives/storage"
-import { batch, createMemo, createSignal, For, onCleanup, onMount, Show } from "solid-js"
+import { batch, createEffect, createMemo, createSignal, For, onCleanup, onMount, Show } from "solid-js"
 import { createStore } from "solid-js/store"
 
 type EditorMode = 'normal' | 'edit' | 'command' 
@@ -16,6 +16,8 @@ type EditorState = {
     cursor_char: number
     input_command: string
     camera_y: number
+    motion_capture_begin: { x: number, y: number }
+    visual_mode_rect?: { x: number, y: number, x2: number, y2: number }
 }
 
 type EditorActions = {
@@ -47,6 +49,10 @@ type EditorActions = {
     normal_mode_yank_text(): void
     normal_mode_change_change_line(): void
     normal_mode_insert_wall_of_text(res: string): void
+    normal_mode_begin_visual_mode(): void
+    normal_mode_end_visual_mode(): void
+    normal_mode_begin_motion_capture(): void
+    normal_mode_end_motion_capture(): void
 }
 
 export default function Editor(props: { text: string, on_save_text: (_: string) => void, on_execute_command: (_: string) => void }) {
@@ -60,7 +66,9 @@ export default function Editor(props: { text: string, on_save_text: (_: string) 
         cursor_line: 0,
         cursor_char: 0,
         input_command: '',
-        camera_y: 0
+        camera_y: 0,
+        motion_capture_begin: { x: 0, y: 0 },
+        visual_mode_rect: undefined
     })
 
     const [persisted_state, set_persisted_state] = makePersisted(createStore({
@@ -158,6 +166,87 @@ export default function Editor(props: { text: string, on_save_text: (_: string) 
         return numberOfLines
     })
 
+
+    const apply_motion_capture = (motion: { x: number, y: number, x2: number, y2: number }) => {
+        if (state.visual_mode_rect) {
+            set_state('visual_mode_rect', 'x2', motion.x2)
+            set_state('visual_mode_rect', 'y2', motion.y2)
+        }
+    }
+
+    const apply_yank_delete_to_box = (box: { x: number, y: number, x2: number, y2: number }) => {
+
+        let yanked_text = ''
+
+        let next_cursor_line = -1
+        let next_cursor_char = -1
+
+        let full_lines_a = -1,
+            full_lines_b = -1
+
+        let half_lines_x_to_rightmost = -1,
+            half_lines_x_to_rightmost_y = -1
+
+        let half_lines_x_to_leftmost = -1,
+            half_lines_x_to_leftmost_y = -1
+        
+        if (box.y < box.y2) {
+            full_lines_a = box.y + 1
+            full_lines_b = box.y2 - 1
+            next_cursor_line = box.y + 1
+
+            next_cursor_char = 0
+
+
+            half_lines_x_to_rightmost = box.x
+            half_lines_x_to_rightmost_y = box.y
+
+            half_lines_x_to_leftmost = box.x2
+            half_lines_x_to_leftmost_y = box.y2
+
+        }
+
+        if (box.y2 < box.y) {
+            full_lines_a = box.y2 + 1
+            full_lines_b = box.y - 1
+            next_cursor_line = box.y2 + 1
+
+            half_lines_x_to_rightmost = box.x2
+            half_lines_x_to_rightmost_y = box.y2
+
+            half_lines_x_to_leftmost = box.x
+            half_lines_x_to_leftmost_y = box.y
+
+
+        }
+
+        batch(() => {
+
+            if (half_lines_x_to_rightmost !== -1) {
+                set_state('lines', half_lines_x_to_rightmost_y,
+                    state.lines[half_lines_x_to_rightmost_y].slice(0, half_lines_x_to_rightmost)
+                )
+            }
+
+            if (half_lines_x_to_leftmost !== -1) {
+                set_state('lines', half_lines_x_to_leftmost_y,
+                    state.lines[half_lines_x_to_leftmost_y].slice(half_lines_x_to_leftmost)
+                )
+            }
+
+            if (full_lines_a < full_lines_b) {
+                yanked_text += state.lines.slice(full_lines_a, full_lines_b + 1).join('\n')
+                set_state('lines', _ => _.toSpliced(full_lines_a, full_lines_b - full_lines_a + 1))
+            }
+
+            set_state('yanked_text', yanked_text)
+            set_state('cursor_line', next_cursor_line)
+            set_state('cursor_char', Math.max(0, Math.min(state.lines[state.cursor_line].length, next_cursor_char)))
+
+            set_state('visual_mode_rect', undefined)
+        })
+    }
+
     let actions: EditorActions = {
         set_mode(mode: EditorMode) {
             set_state('mode', mode)
@@ -204,6 +293,24 @@ export default function Editor(props: { text: string, on_save_text: (_: string) 
             })
         },
 
+        normal_mode_begin_motion_capture() {
+            set_state('motion_capture_begin', { x: state.cursor_char, y: state.cursor_line })
+        },
+        normal_mode_end_motion_capture() {
+            let { x, y }  = state.motion_capture_begin
+            let x2 = state.cursor_char
+            let y2 = state.cursor_line
+
+            let motion = { x, y, x2, y2 }
+
+            apply_motion_capture(motion)
+        },
+        normal_mode_begin_visual_mode() {
+            set_state('visual_mode_rect', { x: state.cursor_char, y: state.cursor_line, x2: state.cursor_char, y2: state.cursor_line })
+        },
+        normal_mode_end_visual_mode() {
+            set_state('visual_mode_rect', undefined)
+        },
         normal_mode_delete_char() {
             let line = state.lines[state.cursor_line]
             let new_line = line.slice(0, state.cursor_char) + line.slice(state.cursor_char + 1)
@@ -242,6 +349,7 @@ export default function Editor(props: { text: string, on_save_text: (_: string) 
         },
         normal_mode_motion_up() {
             batch(() => {
+                actions.normal_mode_begin_motion_capture()
                 if (state.cursor_line === 0) {
                     return
                 }
@@ -251,10 +359,13 @@ export default function Editor(props: { text: string, on_save_text: (_: string) 
                     set_state('cursor_char', line.length)
                 }
                 on_cursor_change()
+
+                actions.normal_mode_end_motion_capture()
             })
         },
         normal_mode_motion_down() {
             batch(() => {
+                actions.normal_mode_begin_motion_capture()
                 if (state.cursor_line >= state.lines.length - 1) {
                     return
                 }
@@ -264,26 +375,32 @@ export default function Editor(props: { text: string, on_save_text: (_: string) 
                     set_state('cursor_char', line.length)
                 }
                 on_cursor_change()
+                actions.normal_mode_end_motion_capture()
             })
         },
         normal_mode_motion_left() {
             batch(() => {
+                actions.normal_mode_begin_motion_capture()
                 if (state.cursor_char === 0) {
                     return
                 }
                 set_state('cursor_char', state.cursor_char - 1)
+                actions.normal_mode_end_motion_capture()
             })
         },
         normal_mode_motion_right() {
             batch(() => {
+                actions.normal_mode_begin_motion_capture()
                 if (state.cursor_char === state.lines[state.cursor_line].length - 1) {
                     return
                 }
                 set_state('cursor_char', state.cursor_char + 1)
+                actions.normal_mode_end_motion_capture()
             })
         },
         normal_mode_motion_back_word() {
 
+            actions.normal_mode_begin_motion_capture()
             let line = state.lines[state.cursor_line]
             let i = state.cursor_char
             while (i > 0) {
@@ -292,8 +409,10 @@ export default function Editor(props: { text: string, on_save_text: (_: string) 
                 }
             }
             set_state('cursor_char', i)
+            actions.normal_mode_end_motion_capture()
         },
         normal_mode_motion_back_word_whitespace() {
+            actions.normal_mode_begin_motion_capture()
 
             let line = state.lines[state.cursor_line]
             let i = state.cursor_char
@@ -303,9 +422,10 @@ export default function Editor(props: { text: string, on_save_text: (_: string) 
                 }
             }
             set_state('cursor_char', i)
+            actions.normal_mode_end_motion_capture()
         },
         normal_mode_motion_forward_word() {
-
+            actions.normal_mode_begin_motion_capture()
             let line = state.lines[state.cursor_line]
             let i = state.cursor_char
             while (i < line.length) {
@@ -314,6 +434,7 @@ export default function Editor(props: { text: string, on_save_text: (_: string) 
                 }
             }
             set_state('cursor_char', i)
+            actions.normal_mode_end_motion_capture()
         },
         normal_mode_join_lines() {
             batch(() => {
@@ -324,6 +445,7 @@ export default function Editor(props: { text: string, on_save_text: (_: string) 
             })
         },
         normal_mode_goto_beginning_of_line() {
+            actions.normal_mode_begin_motion_capture()
             let i = 0
             while (i < state.lines[state.cursor_line].length) {
                 if (state.lines[state.cursor_line][i] !== ' ') {
@@ -332,6 +454,7 @@ export default function Editor(props: { text: string, on_save_text: (_: string) 
                 i++
             }
             set_state('cursor_char', i)
+            actions.normal_mode_end_motion_capture()
         },
         normal_mode_yank_yank_line() {
 
@@ -345,7 +468,12 @@ export default function Editor(props: { text: string, on_save_text: (_: string) 
         normal_mode_delete_delete_line() {
 
             if (state.motion_cmd === 'none') {
-                set_state('motion_cmd', 'delete')
+
+                if (state.visual_mode_rect) {
+                    apply_yank_delete_to_box(state.visual_mode_rect)
+                } else {
+                    set_state('motion_cmd', 'delete')
+                }
             } else if (state.motion_cmd === 'delete') {
                 set_state('yanked_line', state.lines[state.cursor_line])
                 set_state('lines', _ => _.toSpliced(state.cursor_line, 1))
@@ -391,7 +519,7 @@ export default function Editor(props: { text: string, on_save_text: (_: string) 
 
         }
     }
-
+    
     const mode_text = createMemo(() => Mode_Text[state.mode])
 
     onMount(() => {
@@ -411,15 +539,15 @@ export default function Editor(props: { text: string, on_save_text: (_: string) 
                 <For each={state.lines}>{(line, index) =>
                     <Show when={index() >= state.camera_y}>
                         <Show when={index() === state.cursor_line} fallback={
-                            <div class='line'>{line} </div>
+                            <div class='line'><BlockLine line={line} index={index()} off_x={0} vi_rect={state.visual_mode_rect}/> </div>
                         }>
                             <div class='line'>
-                                <span>{line.slice(0, state.cursor_char)}</span>
+                                <span><BlockLine line={line.slice(0, state.cursor_char)} off_x={0} index={index()} vi_rect={state.visual_mode_rect}/></span>
                                 <span class='relative'>
                                     <Cursor state={state} char={line[state.cursor_char]} />
                                 </span>
                                 <Show when={state.cursor_char < state.lines[state.cursor_line].length}>
-                                    <span>{line.slice(state.cursor_char + 1)} </span>
+                                    <span><BlockLine line={line.slice(state.cursor_char + 1)} off_x={state.cursor_char + 1} index={index()} vi_rect={state.visual_mode_rect}/></span>
                                 </Show>
 
                             </div>
@@ -434,6 +562,82 @@ export default function Editor(props: { text: string, on_save_text: (_: string) 
             </Show>
         </div>
     </div>
+    </>)
+}
+
+function BlockLine(props: { line: string, off_x: number, index: number, vi_rect?: { x: number, y: number, x2: number, y2: number }}) {
+    return (<>
+        <For each={props.line.split('')}>{(char, i) => 
+            <Char char={char} x={props.off_x + i()} y={props.index} vi_rect={props.vi_rect}/>
+        }</For>
+    </>)
+}
+
+function Char(props: { char: string, x: number, y: number, vi_rect?: { x: number, y: number, x2: number, y2: number }}) {
+    const is_in_vi_rect = createMemo(() => {
+        if (!props.vi_rect) {
+            return false
+        }
+
+        if (props.vi_rect.y === props.vi_rect.y2) {
+            let min_x = Math.min(props.vi_rect.x, props.vi_rect.x2)
+            let max_x = Math.max(props.vi_rect.x, props.vi_rect.x2)
+
+            if (props.y === props.vi_rect.y) {
+                if (props.x >= min_x && props.x <= max_x) {
+                    return true
+                }
+            }
+        }
+
+
+        if (props.vi_rect.y < props.vi_rect.y2) {
+            if (props.y === props.vi_rect.y) {
+                if (props.x >= props.vi_rect.x) {
+                    return true
+                }
+            }
+            if (props.y > props.vi_rect.y && props.y < props.vi_rect.y2) {
+                return true
+            }
+
+            if (props.y === props.vi_rect.y2) {
+                if (props.x <= props.vi_rect.x2) {
+                    return true
+                }
+            }
+        }
+
+
+        if (props.vi_rect.y2 < props.vi_rect.y) {
+            if (props.y === props.vi_rect.y2) {
+                if (props.x >= props.vi_rect.x2) {
+                    return true
+                }
+            }
+
+            if (props.y > props.vi_rect.y2 && props.y < props.vi_rect.y) {
+                return true
+            }
+
+
+            if (props.y === props.vi_rect.y) {
+                if (props.x <= props.vi_rect.x) {
+                    return true
+                }
+            }
+
+        }
+
+
+
+    })
+
+    return (<>
+        <span class='relative'>
+            <span>{props.char}</span>
+            <span class={`left-0 opacity-30 absolute w-full h-full ${is_in_vi_rect() ? 'bg-slate-300' : ''}`}></span>
+        </span>
     </>)
 }
 
@@ -493,10 +697,13 @@ function KeyBindings(state: EditorState, actions: EditorActions) {
                         let res = _.split('\r\n').join('\n')
                         actions.normal_mode_insert_wall_of_text(res)
                     })
+                } else {
+                    actions.normal_mode_begin_visual_mode()
                 }
                 break
             case 'Escape':
                 actions.set_mode('normal')
+                actions.normal_mode_end_visual_mode()
                 break
             case ':':
                 actions.set_mode('command')
