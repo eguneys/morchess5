@@ -16,7 +16,7 @@ function App() {
 
 function Home() {
 
-  let [, { api_actions: { set_program, run_on_puzzle_set }, home_actions: { run_on_one_puzzle }}] = useMor()
+  let [, { api_actions: { set_program, run_on_puzzle_set }, home_actions: { run_on_one_puzzle, set_category_filter }}] = useMor()
 
 
   const on_program_changed = (text: string) => {
@@ -26,6 +26,15 @@ function Home() {
   const on_execute_command = (command: string) => {
     if (command === 'l') {
       run_on_puzzle_set()
+    }
+    if (command === 'fp') {
+      set_category_filter(ListCategoryFilter.Fp)
+    }
+    if (command === 'tp') {
+      set_category_filter(ListCategoryFilter.Tp)
+    }
+    if (command === 'n') {
+      set_category_filter(ListCategoryFilter.N)
     }
   }
 

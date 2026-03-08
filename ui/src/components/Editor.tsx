@@ -192,7 +192,7 @@ export default function Editor(props: { text: string, on_save_text: (_: string) 
         }
     }
 
-    const apply_yank_delete_to_box = (box: { x: number, y: number, x2: number, y2: number }) => {
+    const apply_yank_delete_to_box = (box: { x: number, y: number, x2: number, y2: number }, is_delete: boolean = false) => {
 
         let yanked_text = ''
 
@@ -238,27 +238,37 @@ export default function Editor(props: { text: string, on_save_text: (_: string) 
 
         batch(() => {
 
+
             if (half_lines_x_to_rightmost !== -1) {
-                set_state('lines', half_lines_x_to_rightmost_y,
-                    state.lines[half_lines_x_to_rightmost_y].slice(0, half_lines_x_to_rightmost)
-                )
+                yanked_text += state.lines[half_lines_x_to_rightmost_y].slice(half_lines_x_to_rightmost) + '\n'
+                if (is_delete) {
+                    set_state('lines', half_lines_x_to_rightmost_y,
+                        state.lines[half_lines_x_to_rightmost_y].slice(0, half_lines_x_to_rightmost)
+                    )
+                }
             }
 
             if (half_lines_x_to_leftmost !== -1) {
-                set_state('lines', half_lines_x_to_leftmost_y,
-                    state.lines[half_lines_x_to_leftmost_y].slice(half_lines_x_to_leftmost)
-                )
+                yanked_text += state.lines[half_lines_x_to_leftmost_y].slice(0, half_lines_x_to_leftmost)
+                if (is_delete) {
+                    set_state('lines', half_lines_x_to_leftmost_y,
+                        state.lines[half_lines_x_to_leftmost_y].slice(half_lines_x_to_leftmost)
+                    )
+                }
             }
 
             if (full_lines_a <= full_lines_b) {
                 yanked_text += state.lines.slice(full_lines_a, full_lines_b + 1).join('\n')
-                set_state('lines', _ => _.toSpliced(full_lines_a, full_lines_b - full_lines_a + 1))
+                if (is_delete) {
+                    set_state('lines', _ => _.toSpliced(full_lines_a, full_lines_b - full_lines_a + 1))
+                }
             }
 
-            set_state('yanked_text', yanked_text)
+
             set_state('cursor_line', next_cursor_line)
             set_state('cursor_char', Math.max(0, Math.min(state.lines[state.cursor_line].length, next_cursor_char)))
 
+            set_state('yanked_text', yanked_text)
             set_state('visual_mode_rect', undefined)
         })
     }
@@ -546,9 +556,13 @@ export default function Editor(props: { text: string, on_save_text: (_: string) 
             actions.normal_mode_end_motion_capture()
         },
         normal_mode_yank_yank_line() {
-
+            push_undo()
             if (state.motion_cmd === 'none') {
-                set_state('motion_cmd', 'yank')
+                if (state.visual_mode_rect) {
+                    apply_yank_delete_to_box(state.visual_mode_rect, false)
+                } else {
+                    set_state('motion_cmd', 'yank')
+                }
             } else if (state.motion_cmd === 'yank') {
                 set_state('yanked_line', state.lines[state.cursor_line])
                 set_state('motion_cmd', 'none')
@@ -587,7 +601,9 @@ export default function Editor(props: { text: string, on_save_text: (_: string) 
             if (state.yanked_line !== '') {
                 set_state('lines', _ => _.toSpliced(state.cursor_line + 1, 0, state.yanked_line))
                 set_state('cursor_line', state.cursor_line + 1)
-
+            }
+            if (state.yanked_text !== '') {
+                this.normal_mode_insert_wall_of_text(state.yanked_text)
             }
         },
         normal_mode_insert_wall_of_text(text: string) {
