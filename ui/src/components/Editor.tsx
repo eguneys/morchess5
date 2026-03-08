@@ -406,7 +406,7 @@ export default function Editor(props: { text: string, on_save_text: (_: string) 
 
 
     return (<>
-    <div ref={$element} class='editor overflow-hidden h-full w-full flex flex-col space-mono-regular text-sm font-bold bg-zinc-700 text-amber-50'>
+    <div ref={$element} class='editor h-full w-full flex flex-col space-mono-regular text-sm font-bold bg-zinc-700 text-amber-50'>
             <div class='area whitespace-pre flex-1 overflow-hidden'>
                 <For each={state.lines}>{(line, index) =>
                     <Show when={index() >= state.camera_y}>

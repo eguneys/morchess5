@@ -50,11 +50,14 @@ export function create_api(mor_store: MorStore) {
             return res
         }
 
-        mor_store[1].home_actions.set_category(Object.keys(res.categories)[0])
 
         let puzzles_payload = res.payload.map(convert_api_puzzle)
         let add = puzzles_payload.filter(_ => !puzzle_List()?.some(l => l.id === _.id))
         set_puzzle_List(_ => [...(_ ?? []), ...add])
+
+        setTimeout(() => {
+            mor_store[1].home_actions.set_category(Object.keys(res.categories)[0])
+        })
 
         return res
     })

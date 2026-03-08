@@ -173,10 +173,10 @@ export function createHomeStead(mor_store: MorStore): [HomeStead, Actions] {
         let aa = api.puzzle_stats.categories[pstate.list_filter.category]
 
         if (pstate.list_filter.filter === ListCategoryFilter.Tp) {
-            return aa.tp
+            return aa.tp.slice(0)
         }
         if (pstate.list_filter.filter === ListCategoryFilter.Fp) {
-            return aa.fp
+            return aa.fp.slice(0)
         }
         return api.list?.map(_ => _.id).filter(_ => !aa.tp.includes(_) && !aa.fp.includes(_))
     })
@@ -234,6 +234,7 @@ export function createHomeStead(mor_store: MorStore): [HomeStead, Actions] {
                 return
             }
             set_pstate('list_filter', 'filter', filter)
+            select_first_puzzle()
         },
         set_category(category: PuzzleCategory) {
            set_category(category) 
