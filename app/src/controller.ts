@@ -127,13 +127,19 @@ router.post('/prolog_code', async (req, res) => {
         return res.status(400).json({ error: 'Code too long' })
     }
     if (list) {
-      let puzzles = puzzleFixture.slice(0, 10)
+      let puzzles = puzzleFixture.slice(0, 1000)
 
       try {
-        let result = await run_category(code, puzzles)
+        let result: any = await run_category(code, puzzles)
         if (!result) {
           return res.json({ error: 'category command failed.' })
         }
+
+        if (result.error) {
+          res.json(result)
+          return
+        }
+
         let puzzle_payload = puzzles
         res.json({ categories: result, payload: puzzle_payload })
       } catch (e) {

@@ -1,7 +1,7 @@
 import { makePersisted } from "@solid-primitives/storage"
 import { createMemo } from "solid-js"
 import { createStore } from "solid-js/store"
-import { is_api_error, type ApiError, type ApiSuccess } from "./api_agent"
+import { is_api_error, type ApiError, type ApiQueries } from "./api_agent"
 import { EMPTY_FEN, fen_pos, makeFen, makeSan, parseSquare, parseUci, type Piece } from "hopefox"
 import type { DrawShape } from "@lichess-org/chessground/draw"
 import { is_key, type SelectedPuzzleInfo } from "./chess"
@@ -125,7 +125,7 @@ export function createHomeStead(mor_store: MorStore): [HomeStead, Actions] {
             return undefined
         }
 
-        if (api.puzzle_stats === undefined) {
+        if (api.puzzle_stats === undefined || is_api_error(api.puzzle_stats)) {
             return undefined
         }
 
@@ -144,7 +144,14 @@ export function createHomeStead(mor_store: MorStore): [HomeStead, Actions] {
 
     let stead: HomeStead = {
         get categories() {
-            return Object.keys(get_api().puzzle_stats?.categories ?? {})
+            let stats = get_api().puzzle_stats
+
+            if (!stats || is_api_error(stats)) {
+                return []
+            }
+
+
+            return Object.keys(stats.categories)
         },
         get list() {
             return list()
@@ -193,7 +200,7 @@ export function createQueries(store: MorStore): HomeQueries {
 
     const get_api = createMemo(() => store[0].api)
 
-    const api_Queries = createMemo<ApiSuccess | undefined>(() => {
+    const api_Queries = createMemo<ApiQueries | undefined>(() => {
         let res = get_api().queries
 
         if (res !== undefined && is_api_error(res)) {

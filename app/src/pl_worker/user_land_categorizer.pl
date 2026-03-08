@@ -169,11 +169,11 @@ update_stats(Type, Cat, Id, Stats0, Stats) :-
 
 %candidate_bishop_forks(Move) :- Move = [move(e2, e4)].
 %candidate_e2e5(Move) :- Move = [move(e2, e5)].
-tactic_detector(bishop_forks, candidate_Hello).
+%tactic_detector(bishop_forks, candidate_Hello).
 
-candidate_Hello([Move]) :- bishop_fork(step(root, Move, _), _, _, _, _).
+%candidate_Hello([Move]) :- bishop_fork(step(root, Move, _), _, _, _, _).
 
-
+/*
 bishop_fork(step(W, Move, W1), BishopSq, RookSq, KingSq, To) :- 
   bishop_fork_candidate(W, BishopSq, To, KingSq, RookSq), 
   Move = move(BishopSq, To), 
@@ -191,3 +191,4 @@ bishop_fork_candidate(W, From, To, KingSq, RookSq) :-
   bishop_attack(W, From, To), 
   empty(W, To). 
  
+ */

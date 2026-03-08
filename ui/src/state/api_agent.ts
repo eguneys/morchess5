@@ -56,15 +56,12 @@ export function create_agent(): Agent {
 
 
 export type Agent = {
-    puzzle_stats(code: string): Promise<ApiCodePuzzleStats>
+    puzzle_stats(code: string): Promise<ApiCodePuzzleStats | ApiError>
     puzzle_list(): Promise<Pagination<ApiPuzzle>>
-    prolog_code: (code: string, puzzle_id: PuzzleId) => Promise<ApiQueries>
+    prolog_code: (code: string, puzzle_id: PuzzleId) => Promise<ApiQueries | ApiError>
 }
 
-export type ApiQueries = ApiSuccess | ApiError
-
-
-export type ApiSuccess = {
+export type ApiQueries = {
     red: string[]
     green: string[]
     pieces: string[][]
@@ -75,6 +72,6 @@ export type ApiError = {
     error: string
 }
 
-export function is_api_error(q: ApiQueries): q is ApiError {
+export function is_api_error(q: object): q is ApiError {
     return (q as ApiError).error !== undefined
 }

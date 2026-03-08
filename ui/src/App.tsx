@@ -1,6 +1,6 @@
 import { Chessboard } from "./components/Chessboard"
 import Editor from "./components/Editor"
-import { createEffect, For, Show } from "solid-js"
+import { For, Show } from "solid-js"
 import { PuzzleList } from "./components/PuzzleList"
 import { MorProvider, useMor } from "./state"
 import { ListCategoryFilter } from "./state/Home"
@@ -108,9 +108,6 @@ function ComplicatedCategorySelectorView() {
 
   }
 
-  createEffect(() => {
-    console.log(home.HomeStead.filter)
-  })
   return (<>
     <div class='flex flex-col'>
       <button onClick={run_on_puzzle_set} class="my-2 px-4 py-1 font-semibold text-white bg-cyan-600 rounded-sm shadow-md hover:bg-cyan-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-75 cursor-pointer">

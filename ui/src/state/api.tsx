@@ -1,6 +1,6 @@
 import { createSignal, untrack } from 'solid-js'
 import { createStore } from 'solid-js/store'
-import { create_agent, type ApiQueries, type Pagination } from './api_agent'
+import { create_agent, is_api_error, type ApiError, type ApiQueries, type Pagination } from './api_agent'
 import { createAsync } from '@solidjs/router'
 import { convert_api_puzzle, type ApiCodePuzzleStats, type ApiPuzzle, type Puzzle } from './puzzle_fixture'
 import type { PuzzleId } from '../components/PuzzleList'
@@ -8,9 +8,9 @@ import type { MorStore } from '.'
 import { createWritableMemo } from '@solid-primitives/memo'
 
 export type ApiState = {
-    queries?: ApiQueries
+    queries?: ApiQueries | ApiError
     list?: Puzzle[]
-    puzzle_stats?: ApiCodePuzzleStats
+    puzzle_stats?: ApiCodePuzzleStats | ApiError
 }
 
 export type ApiActions = {
@@ -40,11 +40,15 @@ export function create_api(mor_store: MorStore) {
 
 
     
-    const get_PuzzleStats = createAsync<ApiCodePuzzleStats | undefined>(async () => {
+    const get_PuzzleStats = createAsync<ApiCodePuzzleStats | ApiError | undefined>(async () => {
         if (!fetch_puzzle_set_stats()) {
             return undefined
         }
         let res = await $api_agent.puzzle_stats(untrack(() => state.program))
+
+        if (is_api_error(res)) {
+            return res
+        }
 
         mor_store[1].home_actions.set_category(Object.keys(res.categories)[0])
 
@@ -68,7 +72,7 @@ export function create_api(mor_store: MorStore) {
 
 
 
-    const get_Queries = createAsync<ApiQueries>(async () => {
+    const get_Queries = createAsync<ApiQueries | ApiError>(async () => {
         let program = state.program
         let id = state.selected_puzzle_id
         if (!program || !id) {
@@ -93,13 +97,13 @@ export function create_api(mor_store: MorStore) {
         get program() {
             return state.program
         },
-        get queries(): ApiQueries | undefined {
+        get queries(): ApiQueries | ApiError | undefined {
             return get_Queries()
         },
         get list() {
             return puzzle_List()
         },
-        get puzzle_stats(): ApiCodePuzzleStats | undefined {
+        get puzzle_stats(): ApiCodePuzzleStats | ApiError | undefined {
             return get_PuzzleStats()
         }
 
