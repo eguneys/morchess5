@@ -37,24 +37,24 @@ function Home() {
 
   return (<>
     <div class='flex flex-row h-screen bg-slate-500'>
-      <div class='relative flex-2 editor-wrap overflow-hidden'>
+      <div class='relative flex-2 editor-wrap overflow-hidden border-r border-slate-500'>
         <Editor text={home.HomeStead.program} on_save_text={on_program_changed} on_execute_command={on_execute_command}/>
         <Show when={home.Queries.error}>{error => 
           <div class='absolute rounded-sm p-2 bottom-0 right-0 text-amber-50 bg-red-500'>{error().error}</div>
           }</Show>
       </div>
-      <div class='flex-1 moves-wrap'>
+      <div class='flex-1 moves-wrap border-r border-slate-500'>
         <ComplicatedCategorySelectorView/>
       </div>
       <div class='flex flex-col flex-1'>
-        <div class='flex-1 moves-wrap'>
-          <Moves history={home.Queries.history}/>
+        <div class='flex-1 moves-wrap border-b border-slate-500'>
+          <Moves title="Matched Solution" history={home.Queries.history}/>
         </div>
-        <div class='board-wrap'>
+        <div class='board-wrap bg-slate-900'>
           <Chessboard fen={home.Queries.fen} shapes={home.Queries.shapes} />
         </div>
-        <div class='flex-1 moves-wrap'>
-          <Moves history={home.HomeStead.solution}/>
+        <div class='flex-1 moves-wrap border-t border-slate-300'>
+          <Moves title="Puzzle Solution" history={home.HomeStead.solution}/>
         </div>
       </div>
     </div>
@@ -65,9 +65,10 @@ function Home() {
 export default App
 
 
-function Moves(props: { history: string[] }) {
+function Moves(props: { history: string[], title: string }) {
   return (<>
     <div class='flex flex-col h-full'>
+      <h3 class='text-sm p-1'>{props.title}</h3>
       <div class='moves bg-gray-700 p-2 flex-1'>
         <For each={props.history}>{(item, i) =>
           <>
@@ -141,6 +142,7 @@ function ComplicatedCategorySelectorView() {
         Run a Sweep
       </button>
 
+      <div class='border-b border-slate-500'>
       <select onInput={on_category_change} title='category' class='text-sm p-2 flex bg-emerald-100'>
         <For each={home.HomeStead.categories} fallback={
           <option>Run a Sweep to show categories.</option>
@@ -148,17 +150,21 @@ function ComplicatedCategorySelectorView() {
           <option value={category}>{category}</option>
           }</For>
       </select>
+      </div>
+
+      <div class='border-b border-slate-500'>
       <PuzzleList list={home.HomeStead.list} selected={home.HomeStead.selected_puzzle?.id} on_puzzle_selected={on_puzzle_selected} />
+      </div>
 
       <select onInput={on_filter_change} title='filter' class='text-md p-1 flex bg-zinc-200 text-gray-700'>
         <option selected={home.HomeStead.filter === ListCategoryFilter.Tp} value="tp">True Positive</option>
         <option selected={home.HomeStead.filter === ListCategoryFilter.Fp} value="fp">False Positive</option>
         <option selected={home.HomeStead.filter === ListCategoryFilter.N}value="negative">Negative</option>
       </select>
-      <div class='bg-slate-800'>
+      <div class='bg-slate-800 border-b border-slate-500'>
         <Show when={home.HomeStead.TpFpTn}>{ TpFpTn =>
         <>
-            <h3 class='text-pink-500 text-center'>{home.HomeStead.selected_category}</h3>
+            <h3 class='font-bold text-pink-500 text-center'>{home.HomeStead.selected_category}</h3>
             <div class='p-1 text-lime-50'>{`Coverage % ${C_percent()} Error %${Tp_percent()}`}</div>
             <div class='p-1 text-lime-50'>{`Tp/Fp/N ${TpFpTn().tp.length}/${TpFpTn().fp.length}/${TpFpTn().n}`}</div>
           </>

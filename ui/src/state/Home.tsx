@@ -114,7 +114,6 @@ export function createHomeStead(mor_store: MorStore): [HomeStead, Actions] {
         return api.list?.find(_ => _.id === pstate.selected_puzzle?.id)
     })
 
-
     const on_puzzle_selected = (puzzle: Puzzle) => {
         set_pstate('selected_puzzle', {
             id: puzzle.id,
